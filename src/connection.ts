@@ -6,7 +6,7 @@ type Params = {
   client_id: string
   onopen?: () => void
   onclose?: () => void
-  onmessage: (message) => void
+  onmessage: (message: any) => void
   onerror: () => void
 }
 
@@ -26,7 +26,7 @@ export class DeribitClient {
   private client_id: string;
   private onopen: () => void;
   private onclose: () => void;
-  private onmessage: (message) => void
+  private onmessage: (message: any) => void
   private onerror: () => void
 
   private auth_data: Auth = {
