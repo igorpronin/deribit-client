@@ -10,6 +10,9 @@ yarn.lock # similar to above, if you're not sharing it
 # Environment variables (Security!)
 .env
 
+# dist
+dist/
+
 # Logs (if you're generating logs)
 logs/
 
