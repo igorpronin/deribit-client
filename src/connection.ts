@@ -1,4 +1,46 @@
 import WebSocket from 'ws';
+import {clearInterval} from "timers";
+
+enum IDs {
+  Auth = 'auth',
+  ReAuth = 're_auth',
+  OpenOrdersBtc = 'open_orders_btc',
+  OpenOrdersEth = 'open_orders_eth',
+  GetFutPos = 'get_fut_positions',
+  GetSpotPos = 'get_spot_positions',
+  CancelAllOrders = 'cancel_all'
+}
+
+enum Subscriptions {
+  BtcIndex = 'deribit_price_index.btc_usd',
+  BtcPerpTicker = 'ticker.BTC-PERPETUAL.raw',
+  UserChangesFutureBtc = 'user.changes.future.BTC.raw',
+  UserPortfolioBtc = 'user.portfolio.btc'
+}
+
+enum Methods {
+  Auth = 'public/auth'
+}
+
+type RpcIDs = IDs | Subscriptions
+
+export interface RpcMsg {
+  id: RpcIDs
+  usIn: number,
+  usOut: number,
+  usDiff: number,
+}
+
+export interface RpcAuthMsg extends RpcMsg {
+  id: IDs.Auth | IDs.ReAuth
+  result: {
+    token_type: string,
+    scope: string,
+    refresh_token: string,
+    expires_in: number,
+    access_token: string
+  },
+}
 
 type Params = {
   ws_api_url: string
@@ -21,6 +63,9 @@ type Auth = {
 }
 
 export class DeribitClient {
+  private msg_prefix = '[Deribit client]'
+  private refresh_interval = 20
+
   private ws_api_url: string;
   private api_key: string;
   private client_id: string;
@@ -28,6 +73,28 @@ export class DeribitClient {
   private onclose: () => void;
   private onmessage: (message: any) => void
   private onerror: () => void
+
+  private refresh_counter: number = 0;
+  private refresh_counter_id: any
+
+  count_refresh = () => {
+    return setInterval(() => {
+      this.refresh_counter++;
+      this.handle_refresh_counter();
+    }, 1000);
+  }
+
+  handle_refresh_counter = () => {
+    if (this.refresh_counter === this.refresh_interval) {
+      clearInterval(this.refresh_counter_id);
+      this.refresh_counter = 0;
+      this.re_auth();
+    }
+  }
+
+  private to_console = (msg: string) => {
+    console.log(`${this.msg_prefix} ${msg}`);
+  }
 
   private auth_data: Auth = {
     state: false,
@@ -42,24 +109,23 @@ export class DeribitClient {
   auth = () => {
     const msg = {
       jsonrpc: '2.0',
-      id: 'auth',
-      method: 'public/auth',
+      id: IDs.Auth,
+      method: Methods.Auth,
       params: {
         grant_type: 'client_credentials',
         client_id: this.client_id,
         client_secret: this.api_key
       }
     };
-    const m = `Initial Deribit authorisation for the client ${this.client_id}...`;
-    console.log(m);
+    this.to_console(`Initial Deribit authorisation for the client ${this.client_id}...`);
     this.client.send(JSON.stringify(msg));
   }
 
   re_auth = () => {
     const msg = {
       jsonrpc: '2.0',
-      id: 're_auth',
-      method: 'public/auth',
+      id: IDs.ReAuth,
+      method: Methods.Auth,
       params: {
         grant_type: 'refresh_token',
         refresh_token: this.auth_data.refresh_token
@@ -68,6 +134,29 @@ export class DeribitClient {
     const m = `Initial Deribit authorisation for the client ${this.client_id}...`;
     console.log(m);
     this.client.send(JSON.stringify(msg));
+  }
+
+  handle_auth_message = (msg: RpcAuthMsg, is_re_auth: boolean) => {
+    let success_msg, err_msg;
+    if (!is_re_auth) {
+      success_msg = 'Authorized!';
+      err_msg = 'Error during auth';
+    } else {
+      success_msg = 'Authorisation refreshed!';
+      err_msg = 'Error during re-auth';
+    }
+    if (msg.result) {
+      this.to_console(success_msg);
+      this.auth_data.refresh_token = msg.result.refresh_token;
+      this.auth_data.access_token = msg.result.access_token;
+      this.auth_data.expires_in = msg.result.expires_in;
+      this.auth_data.scope.raw = msg.result.scope;
+      this.refresh_counter_id = this.count_refresh();
+    } else {
+      const m = err_msg;
+      this.to_console(m);
+      throw new Error(m);
+    }
   }
 
   client: WebSocket;
@@ -99,8 +188,19 @@ export class DeribitClient {
       }
     }
     this.onmessage = (message) => {
-      console.log(message);
-      onmessage(message);
+      const parsed = JSON.parse(message);
+
+      if (parsed.id === IDs.Auth) {
+        this.handle_auth_message(parsed as RpcAuthMsg, false);
+        return;
+      }
+
+      if (parsed.id === IDs.ReAuth) {
+        this.handle_auth_message(parsed as RpcAuthMsg, true);
+        return;
+      }
+
+      onmessage(parsed);
     };
     this.onerror = () => {
       onerror();
