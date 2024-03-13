@@ -107,6 +107,7 @@ export class DeribitClient {
   }
 
   auth = () => {
+    this.to_console(`Initial Deribit authorisation for the client ${this.client_id} processing...`);
     const msg = {
       jsonrpc: '2.0',
       id: IDs.Auth,
@@ -117,11 +118,11 @@ export class DeribitClient {
         client_secret: this.api_key
       }
     };
-    this.to_console(`Initial Deribit authorisation for the client ${this.client_id}...`);
     this.client.send(JSON.stringify(msg));
   }
 
   re_auth = () => {
+    this.to_console(`Deribit re authorisation for the client ${this.client_id} processing...`);
     const msg = {
       jsonrpc: '2.0',
       id: IDs.ReAuth,
@@ -131,8 +132,6 @@ export class DeribitClient {
         refresh_token: this.auth_data.refresh_token
       }
     };
-    const m = `Initial Deribit authorisation for the client ${this.client_id}...`;
-    console.log(m);
     this.client.send(JSON.stringify(msg));
   }
 
