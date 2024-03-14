@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import {clearInterval} from 'timers';
+import {is_value_in_enum} from '@igorpronin/utils';
 import {
   IDs,
   Subscriptions,
@@ -10,7 +11,7 @@ import {
   PublicSubscriptions,
   PrivateSubscriptions
 } from './types';
-import {is_value_in_enum, subscribe} from './actions';
+import {subscribe} from './actions';
 
 type AuthData = {
   state: boolean
