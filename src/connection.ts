@@ -1,58 +1,18 @@
 import WebSocket from 'ws';
-import {clearInterval} from "timers";
+import {clearInterval} from 'timers';
+import {
+  IDs,
+  Subscriptions,
+  PublicMethods,
+  RpcAuthMsg,
+  RpcSubscribedMsg,
+  RpcMessages,
+  PublicSubscriptions,
+  PrivateSubscriptions
+} from './types';
+import {is_value_in_enum, subscribe} from './actions';
 
-enum IDs {
-  Auth = 'auth',
-  ReAuth = 're_auth',
-  OpenOrdersBtc = 'open_orders_btc',
-  OpenOrdersEth = 'open_orders_eth',
-  GetFutPos = 'get_fut_positions',
-  GetSpotPos = 'get_spot_positions',
-  CancelAllOrders = 'cancel_all'
-}
-
-enum Subscriptions {
-  BtcIndex = 'deribit_price_index.btc_usd',
-  BtcPerpTicker = 'ticker.BTC-PERPETUAL.raw',
-  UserChangesFutureBtc = 'user.changes.future.BTC.raw',
-  UserPortfolioBtc = 'user.portfolio.btc'
-}
-
-enum Methods {
-  Auth = 'public/auth'
-}
-
-type RpcIDs = IDs | Subscriptions
-
-export interface RpcMsg {
-  id: RpcIDs
-  usIn: number,
-  usOut: number,
-  usDiff: number,
-}
-
-export interface RpcAuthMsg extends RpcMsg {
-  id: IDs.Auth | IDs.ReAuth
-  result: {
-    token_type: string,
-    scope: string,
-    refresh_token: string,
-    expires_in: number,
-    access_token: string
-  },
-}
-
-type Params = {
-  ws_api_url: string
-  api_key: string
-  client_id: string
-  onopen?: () => void
-  onclose?: () => void
-  onmessage: (message: any) => void
-  onerror: () => void
-}
-
-type Auth = {
+type AuthData = {
   state: boolean
   refresh_token: null | string
   access_token: null | string
@@ -62,20 +22,34 @@ type Auth = {
   }
 }
 
+type Params = {
+  ws_api_url: string
+  api_key: string
+  client_id: string
+  onopen?: () => void
+  onclose?: () => void
+  onerror?: () => void
+  onmessage: (message: RpcMessages) => void
+  subscriptions: Subscriptions[]
+}
+
 export class DeribitClient {
   private msg_prefix = '[Deribit client]'
-  private refresh_interval = 20
+  private refresh_interval = 550 // Refresh authorisation interval in seconds
 
   private ws_api_url: string;
   private api_key: string;
   private client_id: string;
   private onopen: () => void;
   private onclose: () => void;
-  private onmessage: (message: any) => void
+  private onmessage: (message: string) => void
   private onerror: () => void
 
   private refresh_counter: number = 0;
   private refresh_counter_id: any
+
+  private pending_subscriptions: Subscriptions[] = []
+  private active_subscriptions: Subscriptions[] = []
 
   count_refresh = () => {
     return setInterval(() => {
@@ -96,7 +70,7 @@ export class DeribitClient {
     console.log(`${this.msg_prefix} ${msg}`);
   }
 
-  private auth_data: Auth = {
+  private auth_data: AuthData = {
     state: false,
     refresh_token: null,
     access_token: null,
@@ -106,12 +80,12 @@ export class DeribitClient {
     }
   }
 
-  auth = () => {
+  private auth = () => {
     this.to_console(`Initial Deribit authorisation for the client ${this.client_id} processing...`);
     const msg = {
       jsonrpc: '2.0',
       id: IDs.Auth,
-      method: Methods.Auth,
+      method: PublicMethods.Auth,
       params: {
         grant_type: 'client_credentials',
         client_id: this.client_id,
@@ -121,12 +95,12 @@ export class DeribitClient {
     this.client.send(JSON.stringify(msg));
   }
 
-  re_auth = () => {
+  private re_auth = () => {
     this.to_console(`Deribit re authorisation for the client ${this.client_id} processing...`);
     const msg = {
       jsonrpc: '2.0',
       id: IDs.ReAuth,
-      method: Methods.Auth,
+      method: PublicMethods.Auth,
       params: {
         grant_type: 'refresh_token',
         refresh_token: this.auth_data.refresh_token
@@ -135,7 +109,7 @@ export class DeribitClient {
     this.client.send(JSON.stringify(msg));
   }
 
-  handle_auth_message = (msg: RpcAuthMsg, is_re_auth: boolean) => {
+  private handle_auth_message = (msg: RpcAuthMsg, is_re_auth: boolean) => {
     let success_msg, err_msg;
     if (!is_re_auth) {
       success_msg = 'Authorized!';
@@ -158,6 +132,22 @@ export class DeribitClient {
     }
   }
 
+  private handle_subscribed_message = (msg: RpcSubscribedMsg) => {
+    const {result} = msg;
+    result.forEach(subscription => {
+      this.active_subscriptions.push(subscription);
+      this.to_console(`Subscribed on ${subscription}`);
+    })
+  }
+
+  public get_pending_subscriptions = () => {
+    return this.pending_subscriptions;
+  }
+
+  public get_active_subscriptions = () => {
+    return this.active_subscriptions;
+  }
+
   client: WebSocket;
 
   constructor(params: Params) {
@@ -168,7 +158,8 @@ export class DeribitClient {
       onopen,
       onclose,
       onmessage,
-      onerror
+      onerror,
+      subscriptions
     } = params;
     this.ws_api_url = ws_api_url;
     this.api_key = api_key;
@@ -186,11 +177,21 @@ export class DeribitClient {
         onclose();
       }
     }
+    this.onerror = () => {
+      if (onerror) {
+        onerror();
+      }
+    };
     this.onmessage = (message) => {
-      const parsed = JSON.parse(message);
+      const parsed: RpcMessages = JSON.parse(message);
 
       if (parsed.id === IDs.Auth) {
         this.handle_auth_message(parsed as RpcAuthMsg, false);
+        subscriptions.forEach(subscription => {
+          this.to_console(`Subscribing on ${subscription}...`)
+          subscribe(this.client, subscription);
+          this.pending_subscriptions.push(subscription);
+        })
         return;
       }
 
@@ -199,10 +200,15 @@ export class DeribitClient {
         return;
       }
 
-      onmessage(parsed);
-    };
-    this.onerror = () => {
-      onerror();
+      if (
+        is_value_in_enum(parsed.id, PublicSubscriptions) ||
+        is_value_in_enum(parsed.id, PrivateSubscriptions)
+      ) {
+        this.handle_subscribed_message(parsed as RpcSubscribedMsg);
+        return;
+      }
+
+      onmessage(parsed as RpcMessages);
     };
 
     this.client.on('close', this.onclose);
