@@ -6,10 +6,7 @@ import {
   PublicMethods,
   PrivateMethods
 } from './types';
-
-export const is_value_in_enum = (value: Subscriptions, enum_type: any): boolean => {
-  return Object.keys(enum_type).some(key => enum_type[key] === value);
-}
+import {is_value_in_enum} from '@igorpronin/utils';
 
 export const subscribe = (client: WebSocket, subscription: Subscriptions) => {
   const msg: any = {
