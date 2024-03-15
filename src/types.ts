@@ -36,15 +36,16 @@ export type Methods = PublicMethods | PrivateMethods;
 
 type RpcIDs = IDs | PublicSubscriptions | PrivateSubscriptions;
 
+export type RpcError = {
+  code: number
+  message: string
+}
 interface RpcMsg {
   id: RpcIDs
   usIn: number,
   usOut: number,
   usDiff: number,
-  error?: {
-    code: number
-    message: string
-  }
+  error?: RpcError
 }
 
 export interface RpcAuthMsg extends RpcMsg {
