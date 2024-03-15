@@ -58,38 +58,15 @@ export class DeribitClient {
   private on_message: (message: string) => void
   private on_error: () => void
 
+  private connection_opened_at: null | Date = null
+  private authorized_at: null | Date = null
+
   private refresh_counter: number = 0;
   private refresh_counter_id: any
 
   private requested_subscriptions: Subscriptions[] = []
   private pending_subscriptions: Subscriptions[] = []
   private active_subscriptions: Subscriptions[] = []
-
-  private accounts_summary: AccountsSummary = {
-    BTC: null,
-    ETH: null,
-    USDC: null,
-    USDT: null
-  }
-
-  count_refresh = () => {
-    return setInterval(() => {
-      this.refresh_counter++;
-      this.handle_refresh_counter();
-    }, 1000);
-  }
-
-  handle_refresh_counter = () => {
-    if (this.refresh_counter === this.refresh_interval) {
-      clearInterval(this.refresh_counter_id);
-      this.refresh_counter = 0;
-      this.re_auth();
-    }
-  }
-
-  private to_console = (msg: string) => {
-    console.log(`${this.msg_prefix} ${msg}`);
-  }
 
   private auth_data: AuthData = {
     state: false,
@@ -99,6 +76,32 @@ export class DeribitClient {
     scope: {
       raw: null
     }
+  }
+
+  private accounts_summary: AccountsSummary = {
+    BTC: null,
+    ETH: null,
+    USDC: null,
+    USDT: null
+  }
+
+  private count_refresh = () => {
+    return setInterval(() => {
+      this.refresh_counter++;
+      this.handle_refresh_counter();
+    }, 1000);
+  }
+
+  private handle_refresh_counter = () => {
+    if (this.refresh_counter === this.refresh_interval) {
+      clearInterval(this.refresh_counter_id);
+      this.refresh_counter = 0;
+      this.re_auth();
+    }
+  }
+
+  private to_console = (msg: string) => {
+    console.log(`${this.msg_prefix} ${msg}`);
   }
 
   private auth = () => {
@@ -156,6 +159,7 @@ export class DeribitClient {
       this.auth_data.expires_in = msg.result.expires_in;
       this.auth_data.scope.raw = msg.result.scope;
       this.refresh_counter_id = this.count_refresh();
+      this.authorized_at = new Date();
     }
   }
 
@@ -191,6 +195,7 @@ export class DeribitClient {
     })
   }
 
+  // Warning: method doesn't work as expected (request accepts, but there is no any response)
   private get_accounts_summary_from_deribit = () => {
     this.to_console(`Getting account summary for currency ${Currencies.BTC}...`);
     get_account_summary(this.client, Currencies.BTC);
@@ -235,6 +240,7 @@ export class DeribitClient {
     }
 
     this.on_open = () => {
+      this.connection_opened_at = new Date();
       this.auth();
       if (on_open) {
         on_open();
