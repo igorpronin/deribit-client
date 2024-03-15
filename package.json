@@ -1,6 +1,6 @@
 {
   "name": "@igorpronin/deribit-client",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Deribit client for internal purposes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,7 +26,7 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
-    "@igorpronin/utils": "^1.0.3",
+    "@igorpronin/utils": "^1.0.4",
     "ws": "^8.16.0"
   }
 }

@@ -1,19 +1,25 @@
 import WebSocket from 'ws';
 import {clearInterval} from 'timers';
-import {is_value_in_enum} from '@igorpronin/utils';
 import {
+  is_value_in_enum,
+  remove_elements_from_existing_array
+} from '@igorpronin/utils';
+import {
+  AccountsSummary,
+  AccSummaryIDs,
+  AccountSummary,
+  Currencies,
   IDs,
-  Subscriptions,
-  PublicMethods,
-  RpcAuthMsg,
-  RpcSubscribedMsg,
-  RpcMessages,
-  PublicSubscriptions,
   PrivateSubscriptions,
-  RpcError
+  PublicMethods,
+  PublicSubscriptions,
+  RpcAuthMsg,
+  RpcError,
+  RpcMessages,
+  RpcSubscribedMsg,
+  Subscriptions
 } from './types';
-import {subscribe} from './actions';
-import {remove_element_by_value} from '@igorpronin/utils';
+import {get_account_summary, subscribe} from './actions';
 
 type AuthData = {
   state: boolean
@@ -42,6 +48,8 @@ export class DeribitClient {
   private refresh_interval = 550 // Refresh authorisation interval in seconds
   private subscriptions_check_time = 5 // Time in seconds after ws opened and authorized to check if pending subscriptions still exist
 
+  client: WebSocket;
+
   private ws_api_url: string;
   private api_key: string;
   private client_id: string;
@@ -56,6 +64,13 @@ export class DeribitClient {
   private requested_subscriptions: Subscriptions[] = []
   private pending_subscriptions: Subscriptions[] = []
   private active_subscriptions: Subscriptions[] = []
+
+  private accounts_summary: AccountsSummary = {
+    BTC: null,
+    ETH: null,
+    USDC: null,
+    USDT: null
+  }
 
   count_refresh = () => {
     return setInterval(() => {
@@ -162,7 +177,7 @@ export class DeribitClient {
     }
     const {result} = msg;
     result.forEach(subscription => {
-      this.pending_subscriptions = remove_element_by_value(this.requested_subscriptions, subscription);
+      remove_elements_from_existing_array(this.pending_subscriptions, subscription);
       this.active_subscriptions.push(subscription);
       this.to_console(`Subscribed on ${subscription}`);
     })
@@ -176,6 +191,17 @@ export class DeribitClient {
     })
   }
 
+  private get_accounts_summary_from_deribit = () => {
+    this.to_console(`Getting account summary for currency ${Currencies.BTC}...`);
+    get_account_summary(this.client, Currencies.BTC);
+    this.to_console(`Getting account summary for currency ${Currencies.ETH}...`);
+    get_account_summary(this.client, Currencies.ETH);
+    this.to_console(`Getting account summary for currency ${Currencies.USDC}...`);
+    get_account_summary(this.client, Currencies.USDC);
+    this.to_console(`Getting account summary for currency ${Currencies.USDT}...`);
+    get_account_summary(this.client, Currencies.USDT);
+  }
+
   public get_pending_subscriptions = () => {
     return this.pending_subscriptions;
   }
@@ -184,7 +210,9 @@ export class DeribitClient {
     return this.active_subscriptions;
   }
 
-  client: WebSocket;
+  public get_accounts_summary = () => {
+    return this.accounts_summary;
+  }
 
   constructor(params: Params) {
     const {
@@ -229,6 +257,8 @@ export class DeribitClient {
         this.handle_auth_message(parsed as RpcAuthMsg, false);
         this.subscribe_requested();
         this.init_pending_subscriptions_check();
+        // Warning: method doesn't work as expected (request accepts, but there is no any response)
+        // this.get_accounts_summary_from_deribit();
         return;
       }
 
@@ -245,6 +275,14 @@ export class DeribitClient {
         if (on_subscribed_all && this.pending_subscriptions.length === 0) {
           on_subscribed_all();
         }
+        return;
+      }
+
+      // Warning: method doesn't work as expected (request accepts, but there is no any response)
+      if (is_value_in_enum(parsed.id, AccSummaryIDs)) {
+        const currency = parsed.id.split('/')[1] as Currencies;
+        this.accounts_summary[currency] = parsed.result as AccountSummary;
+        this.to_console(`Account summary for the currency ${currency} updated`);
         return;
       }
 

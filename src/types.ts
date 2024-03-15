@@ -1,6 +1,13 @@
 export enum IDs {
   Auth = 'auth',
-  ReAuth = 're_auth',
+  ReAuth = 're_auth'
+}
+
+export enum AccSummaryIDs {
+  AccountSummaryBtc = 'acc_summary/BTC',
+  AccountSummaryEth = 'acc_summary/ETH',
+  AccountSummaryUsdc = 'acc_summary/USDC',
+  AccountSummaryUsdt = 'acc_summary/USDT'
 }
 
 export enum PublicSubscriptions {
@@ -15,7 +22,14 @@ export enum PublicSubscriptions {
 }
 
 export enum PrivateSubscriptions {
-
+  PortfolioBtc = 'user.portfolio.btc',
+  PortfolioEth = 'user.portfolio.eth',
+  PortfolioUsdc = 'user.portfolio.usdc',
+  PortfolioUsdt = 'user.portfolio.usdt',
+  ChangesAnyAny = 'user.changes.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency
+  ChangesFutureAny = 'user.changes.future.any.raw',
+  ChangesOptionAny = 'user.changes.option.any.raw',
+  ChangesSpotAny = 'user.changes.spot.any.raw',
 }
 
 export type Subscriptions = PublicSubscriptions | PrivateSubscriptions;
@@ -29,12 +43,13 @@ export enum PublicMethods {
 }
 
 export enum PrivateMethods {
+  AccountSummary = 'private/get_account_summary',
   PrivateSubscribe = 'private/subscribe'
 }
 
 export type Methods = PublicMethods | PrivateMethods;
 
-type RpcIDs = IDs | PublicSubscriptions | PrivateSubscriptions;
+type RpcIDs = IDs | PublicSubscriptions | PrivateSubscriptions | AccSummaryIDs;
 
 export type RpcError = {
   code: number
@@ -207,17 +222,100 @@ export interface PerpetualTickerData {
   best_ask_amount: number
 }
 
+// https://docs.deribit.com/#user-changes-kind-currency-interval
 export interface UserChanges {
-  // https://docs.deribit.com/#user-changes-kind-currency-interval
   instrument_name: Instruments
   trades: Trade[]
   positions: Position[]
   orders: Order[]
 }
 
+// describe
+// https://docs.deribit.com/#user-portfolio-currency
 export interface UserPortfolio {
-  // describe
-  // https://docs.deribit.com/#user-portfolio-currency
+
+}
+
+export interface AccountsSummary {
+  BTC: null | AccountSummary
+  ETH: null | AccountSummary
+  USDC: null | AccountSummary
+  USDT: null | AccountSummary
+}
+
+// https://docs.deribit.com/#private-get_account_summary
+// todo finalize structure
+export interface AccountSummary {
+  delta_total_map: {
+    btc_usd: any
+  },
+  margin_balance: number,
+  futures_session_rpl: number,
+  options_session_rpl: number,
+  estimated_liquidation_ratio_map: {
+    btc_usd: number
+  },
+  session_upl: number,
+  email: string,
+  system_name: string,
+  username: string,
+  interuser_transfers_enabled: boolean,
+  id: number,
+  estimated_liquidation_ratio: number,
+  options_gamma_map: {
+    btc_usd: number
+  },
+  options_vega: number,
+  options_value: number,
+  available_withdrawal_funds: number,
+  projected_delta_total: number,
+  maintenance_margin: number,
+  total_pl: number,
+  limits: {
+    non_matching_engine: {
+      rate: number,
+      burst: number
+    },
+    matching_engine: {
+      rate: number,
+      burst: number
+    }
+  },
+  options_theta_map: {
+    btc_usd: number
+  },
+  projected_maintenance_margin: number,
+  available_funds: number,
+  login_enabled: boolean,
+  options_delta: number,
+  balance: number,
+  security_keys_enabled: boolean,
+  referrer_id: null | number,
+  mmp_enabled: boolean,
+  equity: number,
+  futures_session_upl: number,
+  fee_balance: number,
+  currency: Currencies,
+  options_session_upl: number,
+  projected_initial_margin: number,
+  options_theta: number,
+  creation_timestamp: number,
+  self_trading_extended_to_subaccounts: boolean,
+  portfolio_margining_enabled: boolean,
+  cross_collateral_enabled: boolean,
+  margin_model: string,
+  options_vega_map: {
+    btc_usd: number
+  },
+  futures_pl: number,
+  options_pl: number,
+  type: string,
+  self_trading_reject_mode: string,
+  initial_margin: number,
+  spot_reserve: number,
+  delta_total: number,
+  options_gamma: number,
+  session_rpl: number
 }
 
 export interface RpcAuthMsg extends RpcMsg {
@@ -236,4 +334,9 @@ export interface RpcSubscribedMsg extends RpcMsg {
   result: Subscriptions[]
 }
 
-export type RpcMessages = RpcAuthMsg | RpcSubscribedMsg;
+export interface RpcAccSummaryMsg extends RpcMsg {
+  id: AccSummaryIDs,
+  result: AccountSummary
+}
+
+export type RpcMessages = RpcAuthMsg | RpcSubscribedMsg | RpcAccSummaryMsg;
