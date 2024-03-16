@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import {clearInterval} from 'timers';
+import EventEmitter from 'events';
 import {
   is_value_in_enum,
   remove_elements_from_existing_array
@@ -40,7 +41,6 @@ type Params = {
   on_error?: () => void
   on_message: (message: RpcMessages) => void
   subscriptions?: Subscriptions[]
-  on_subscribed_all?: () => void
 }
 
 export class DeribitClient {
@@ -49,6 +49,8 @@ export class DeribitClient {
   private subscriptions_check_time = 5 // Time in seconds after ws opened and authorized to check if pending subscriptions still exist
 
   client: WebSocket;
+
+  public ee: any = null;
 
   private ws_api_url: string;
   private api_key: string;
@@ -159,7 +161,10 @@ export class DeribitClient {
       this.auth_data.expires_in = msg.result.expires_in;
       this.auth_data.scope.raw = msg.result.scope;
       this.refresh_counter_id = this.count_refresh();
-      this.authorized_at = new Date();
+      if (!is_re_auth) {
+        this.authorized_at = new Date();
+        this.ee.emit('authorized');
+      }
     }
   }
 
@@ -183,11 +188,12 @@ export class DeribitClient {
     result.forEach(subscription => {
       remove_elements_from_existing_array(this.pending_subscriptions, subscription);
       this.active_subscriptions.push(subscription);
+      this.ee.emit('subscribed', subscription);
       this.to_console(`Subscribed on ${subscription}`);
     })
   }
 
-  private subscribe_requested = () => {
+  private subscribe_on_requested = () => {
     this.requested_subscriptions.forEach(subscription => {
       this.to_console(`Subscribing on ${subscription}...`)
       subscribe(this.client, subscription);
@@ -207,17 +213,11 @@ export class DeribitClient {
     get_account_summary(this.client, Currencies.USDT);
   }
 
-  public get_pending_subscriptions = () => {
-    return this.pending_subscriptions;
-  }
+  public get_pending_subscriptions = () => this.pending_subscriptions;
 
-  public get_active_subscriptions = () => {
-    return this.active_subscriptions;
-  }
+  public get_active_subscriptions = () => this.active_subscriptions;
 
-  public get_accounts_summary = () => {
-    return this.accounts_summary;
-  }
+  public get_accounts_summary = () => this.accounts_summary;
 
   constructor(params: Params) {
     const {
@@ -228,8 +228,7 @@ export class DeribitClient {
       on_close,
       on_message,
       on_error,
-      subscriptions,
-      on_subscribed_all
+      subscriptions
     } = params;
     this.ws_api_url = ws_api_url;
     this.api_key = api_key;
@@ -238,6 +237,8 @@ export class DeribitClient {
     if (subscriptions) {
       this.requested_subscriptions = subscriptions;
     }
+
+    this.ee = new EventEmitter();
 
     this.on_open = () => {
       this.connection_opened_at = new Date();
@@ -261,7 +262,7 @@ export class DeribitClient {
 
       if (parsed.id === IDs.Auth) {
         this.handle_auth_message(parsed as RpcAuthMsg, false);
-        this.subscribe_requested();
+        this.subscribe_on_requested();
         this.init_pending_subscriptions_check();
         // Warning: method doesn't work as expected (request accepts, but there is no any response)
         // this.get_accounts_summary_from_deribit();
@@ -278,8 +279,8 @@ export class DeribitClient {
         is_value_in_enum(parsed.id, PrivateSubscriptions)
       ) {
         this.handle_subscribed_message(parsed as RpcSubscribedMsg);
-        if (on_subscribed_all && this.pending_subscriptions.length === 0) {
-          on_subscribed_all();
+        if (this.pending_subscriptions.length === 0) {
+          this.ee.emit('subscribed_all');
         }
         return;
       }
