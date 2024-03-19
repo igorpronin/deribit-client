@@ -1,6 +1,7 @@
 export enum IDs {
   Auth = 'auth',
-  ReAuth = 're_auth'
+  ReAuth = 're_auth',
+  GetOrderState = 'gos'
 }
 
 export enum AccSummaryIDs {
@@ -26,7 +27,8 @@ export enum PrivateSubscriptions {
   PortfolioEth = 'user.portfolio.eth',
   PortfolioUsdc = 'user.portfolio.usdc',
   PortfolioUsdt = 'user.portfolio.usdt',
-  ChangesAnyAny = 'user.changes.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency
+  OrdersAnyAny = 'user.orders.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-orders-kind-currency-raw
+  ChangesAnyAny = 'user.changes.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-changes-kind-currency-interval
   ChangesFutureAny = 'user.changes.future.any.raw',
   ChangesOptionAny = 'user.changes.option.any.raw',
   ChangesSpotAny = 'user.changes.spot.any.raw',
@@ -44,12 +46,18 @@ export enum PublicMethods {
 
 export enum PrivateMethods {
   AccountSummary = 'private/get_account_summary',
-  PrivateSubscribe = 'private/subscribe'
+  PrivateSubscribe = 'private/subscribe',
+  GetOrderState = 'private/get_order_state'
 }
 
 export type Methods = PublicMethods | PrivateMethods;
 
-type RpcIDs = IDs | PublicSubscriptions | PrivateSubscriptions | AccSummaryIDs;
+type RpcIDs =
+  IDs |
+  PublicSubscriptions |
+  PrivateSubscriptions |
+  AccSummaryIDs |
+  string; // open_order() has id like `o/${order_id}`;
 
 export type RpcError = {
   code: number
@@ -176,7 +184,23 @@ export interface Position {
   total_profit_loss: number
 }
 
+export interface OrderParams {
+  instrument_name: Instruments
+  amount: number
+  type: OrderType
+  price?: number
+  time_in_force: TimeInForce
+  direction: OrderDirections
+}
 
+export interface OrderData {
+  initial?: OrderParams
+  is_pending: boolean
+  is_error: boolean
+  rpc_error_message?: RpcMsg
+  order_rpc_message_results: Order[]
+  state: null | OrderStates
+}
 
 export interface SubscriptionParams {
   channel: Subscriptions,
@@ -334,9 +358,19 @@ export interface RpcSubscribedMsg extends RpcMsg {
   result: Subscriptions[]
 }
 
+// https://docs.deribit.com/#private-buy
+// https://docs.deribit.com/#private-sell
+export interface OpenOrderMsg extends RpcMsg {
+  id: string
+  result: {
+    trades: Trade[]
+    order: Order
+  }
+}
+
 export interface RpcAccSummaryMsg extends RpcMsg {
   id: AccSummaryIDs,
   result: AccountSummary
 }
 
-export type RpcMessages = RpcAuthMsg | RpcSubscribedMsg | RpcAccSummaryMsg;
+export type RpcMessages = RpcAuthMsg | RpcSubscribedMsg | RpcAccSummaryMsg | OpenOrderMsg;

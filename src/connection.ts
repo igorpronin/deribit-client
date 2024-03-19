@@ -18,9 +18,16 @@ import {
   RpcError,
   RpcMessages,
   RpcSubscribedMsg,
-  Subscriptions
+  Subscriptions,
+  OrderParams,
+  OrderData,
+  OpenOrderMsg
 } from './types';
-import {get_account_summary, subscribe} from './actions';
+import {
+  get_account_summary,
+  open_order,
+  subscribe
+} from './actions';
 
 type AuthData = {
   state: boolean
@@ -43,6 +50,13 @@ type Params = {
   subscriptions?: Subscriptions[]
 }
 
+type Orders = {
+  pending_orders_amount: number
+  all: {[id: string]: OrderData}
+  list: OrderData[]
+  by_ref_id: {[id: string]: OrderData}
+}
+
 export class DeribitClient {
   private msg_prefix = '[Deribit client]'
   private refresh_interval = 550 // Refresh authorisation interval in seconds
@@ -50,7 +64,7 @@ export class DeribitClient {
 
   client: WebSocket;
 
-  public ee: any = null;
+  public ee: EventEmitter;
 
   private ws_api_url: string;
   private api_key: string;
@@ -69,6 +83,13 @@ export class DeribitClient {
   private requested_subscriptions: Subscriptions[] = []
   private pending_subscriptions: Subscriptions[] = []
   private active_subscriptions: Subscriptions[] = []
+
+  private orders: Orders = {
+    pending_orders_amount: 0,
+    all: {},
+    list: [],
+    by_ref_id: {}
+  }
 
   private auth_data: AuthData = {
     state: false,
@@ -135,11 +156,13 @@ export class DeribitClient {
     this.client.send(JSON.stringify(msg));
   }
 
-  private handle_rpc_error = (msg: string, error: RpcError) => {
+  private handle_rpc_error = (msg: string, is_critical: boolean, error: RpcError) => {
     const {code, message} = error;
     const m = `${msg} (message: ${message}, code: ${code})`;
     this.to_console(m);
-    throw new Error(m);
+    if (is_critical) {
+      throw new Error(m);
+    }
   }
 
   private handle_auth_message = (msg: RpcAuthMsg, is_re_auth: boolean) => {
@@ -152,7 +175,7 @@ export class DeribitClient {
       err_msg = 'Error during re-auth';
     }
     if (msg.error) {
-      this.handle_rpc_error(err_msg, msg.error);
+      this.handle_rpc_error(err_msg, true, msg.error);
     }
     if (msg.result) {
       this.to_console(success_msg);
@@ -182,7 +205,7 @@ export class DeribitClient {
 
   private handle_subscribed_message = (msg: RpcSubscribedMsg) => {
     if (msg.error) {
-      this.handle_rpc_error('Subscription error', msg.error);
+      this.handle_rpc_error('Subscription error', true, msg.error);
     }
     const {result} = msg;
     result.forEach(subscription => {
@@ -191,6 +214,31 @@ export class DeribitClient {
       this.ee.emit('subscribed', subscription);
       this.to_console(`Subscribed on ${subscription}`);
     })
+  }
+
+  private handle_open_order_message = (msg: OpenOrderMsg) => {
+    const id = msg.id.split('/')[1];
+    const order_data = this.orders.all[id];
+    order_data.is_pending = false;
+    this.orders.pending_orders_amount--;
+    if (msg.error) {
+      order_data.rpc_error_message = msg;
+      this.handle_rpc_error('Subscription error', false, msg.error);
+      return;
+    }
+    const order = msg.result.order;
+    const {order_id, order_state} = order;
+    order_data.order_rpc_message_results.push(order);
+    if (!this.orders.by_ref_id[order_id]) {
+      this.orders.by_ref_id[order_id] = order_data;
+    }
+    if (!order_data.state) {
+      order_data.state = order_state;
+    }
+    const is_closing_states = order_state === 'filled' || order_state === 'rejected' || order_state === 'cancelled';
+    if (order_data.state === 'open' && is_closing_states) {
+      order_data.state = order_state;
+    }
   }
 
   private subscribe_on_requested = () => {
@@ -218,6 +266,22 @@ export class DeribitClient {
   public get_active_subscriptions = () => this.active_subscriptions;
 
   public get_accounts_summary = () => this.accounts_summary;
+
+  public has_pending_orders = () => this.orders.pending_orders_amount > 0;
+
+  public open_order = (params: OrderParams) => {
+    const id = open_order(this.client, params);
+    this.orders.pending_orders_amount++;
+    const order_data = {
+      initial: params,
+      is_pending: true,
+      is_error: false,
+      order_rpc_message_results: [],
+      state: null
+    }
+    this.orders.all[id] = order_data;
+    this.orders.list.push(order_data);
+  }
 
   constructor(params: Params) {
     const {
@@ -282,6 +346,11 @@ export class DeribitClient {
         if (this.pending_subscriptions.length === 0) {
           this.ee.emit('subscribed_all');
         }
+        return;
+      }
+
+      if (parsed.id.startsWith('o/')) {
+        this.handle_open_order_message(parsed as OpenOrderMsg);
         return;
       }
 
