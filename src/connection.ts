@@ -267,7 +267,7 @@ export class DeribitClient {
 
   public get_accounts_summary = () => this.accounts_summary;
 
-  public has_pending_orders = () => this.orders.pending_orders_amount > 0;
+  public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 
   public open_order = (params: OrderParams) => {
     const id = open_order(this.client, params);

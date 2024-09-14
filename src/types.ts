@@ -12,8 +12,8 @@ export enum AccSummaryIDs {
 }
 
 export enum PublicSubscriptions {
-  IndexPriceBtcUsd = 'deribit_price_index.btc_usd',
-  IndexPriceEthUsd = 'deribit_price_index.eth_usd',
+  IndexPriceBtcUsd = 'deribit_price_index.btc_usd', // https://docs.deribit.com/#deribit_price_index-index_name
+  IndexPriceEthUsd = 'deribit_price_index.eth_usd', // https://docs.deribit.com/#deribit_price_index-index_name
   TickerBtcPerpetual = 'ticker.BTC-PERPETUAL.raw',
   TickerEthPerpetual = 'ticker.ETH-PERPETUAL.raw',
   TickerBtcUsdcSpot = 'ticker.BTC_USDC.raw',
