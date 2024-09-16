@@ -9,7 +9,8 @@
     "build": "tsc",
     "clear": "rm -rf ./dist",
     "dev": "nodemon ./src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "permit": "chmod +x update-version.sh && chmod +x git-commit.sh"
   },
   "repository": {
     "type": "git",
@@ -21,12 +22,12 @@
   "devDependencies": {
     "@types/events": "^3.0.3",
     "@types/node": "^20.11.26",
-    "@types/ws": "^8.5.10",
     "nodemon": "^3.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.2"
   },
   "dependencies": {
+    "@types/ws": "^8.5.10",
     "@igorpronin/utils": "^1.0.4",
     "events": "^3.3.0",
     "ws": "^8.16.0"
