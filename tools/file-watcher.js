@@ -3,7 +3,7 @@ const path = require('path');
 const { exec } = require('child_process');
 
 const watch_dir = './src'; // Directory to watch
-const command_to_run = 'echo "Files changed!"'; // Replace with your desired command
+const command_to_run = 'npm run clear && npm run build';
 
 console.log(`Watching for file changes in ${watch_dir}`);
 
