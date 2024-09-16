@@ -16,16 +16,6 @@ if [ $? -eq 0 ]; then
     
     if [ $? -eq 0 ]; then
         echo "Successfully published version $current_version to npm"
-        
-        # Commit changes
-        ./git-commit.sh "Build and publish version $current_version"
-        
-        if [ $? -eq 0 ]; then
-            echo "Changes committed successfully"
-        else
-            echo "Failed to commit changes"
-            exit 1
-        fi
     else
         echo "Failed to publish to npm"
         exit 1
