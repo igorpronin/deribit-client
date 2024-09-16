@@ -11,9 +11,30 @@ fi
 commit_message="$*"
 
 # Run git add .
+echo "Staging changes..."
 git add .
 
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to stage changes."
+    exit 1
+fi
+
 # Run git commit with the provided message
+echo "Committing changes..."
 git commit -m "$commit_message"
 
-echo "Changes committed with message: $commit_message"
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to commit changes."
+    exit 1
+fi
+
+# Push changes to remote repository
+echo "Pushing changes to remote repository..."
+git push
+
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to push changes."
+    exit 1
+fi
+
+echo "Changes successfully committed and pushed with message: $commit_message"
