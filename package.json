@@ -10,7 +10,7 @@
     "clear": "rm -rf ./dist",
     "dev": "nodemon ./src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "permit": "chmod +x update-version.sh && chmod +x git-commit.sh && chmod +x update-and-commit.sh"
+    "permit": "chmod +x update-version.sh && chmod +x git-commit.sh && chmod +x update-and-commit.sh && chmod +x build-and-publish.sh"
   },
   "repository": {
     "type": "git",
