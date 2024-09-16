@@ -17,18 +17,18 @@ shift
 commit_message="$*"
 
 # Run update-version.sh
-./update-version.sh "$version_type"
+./tools/update-version.sh "$version_type"
 
 # Check if update-version.sh was successful
 if [ $? -eq 0 ]; then
     # If successful, run git-commit.sh
-    ./git-commit.sh "$commit_message"
+    ./tools/git-commit.sh "$commit_message"
     
     if [ $? -eq 0 ]; then
         echo "Version updated and changes committed successfully."
         
         # Run build-and-publish.sh as the last step
-        ./build-and-publish.sh
+        ./tools/build-and-publish.sh
         
         if [ $? -eq 0 ]; then
             echo "Package built and published successfully."
