@@ -2,17 +2,17 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 
-const watchDir = './src'; // Directory to watch
-const commandToRun = 'echo "Files changed!"'; // Replace with your desired command
+const watch_dir = './src'; // Directory to watch
+const command_to_run = 'echo "Files changed!"'; // Replace with your desired command
 
-console.log(`Watching for file changes in ${watchDir}`);
+console.log(`Watching for file changes in ${watch_dir}`);
 
-fs.watch(watchDir, { recursive: true }, (eventType, filename) => {
+fs.watch(watch_dir, { recursive: true }, (eventType, filename) => {
   if (filename) {
-    const filePath = path.join(watchDir, filename);
+    const filePath = path.join(watch_dir, filename);
     console.log(`File ${filePath} has been ${eventType}`);
 
-    exec(commandToRun, (error, stdout, stderr) => {
+    exec(command_to_run, (error, stdout, stderr) => {
       if (error) {
         console.error(`Error executing command: ${error}`);
         return;
