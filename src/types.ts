@@ -1,14 +1,14 @@
 export enum IDs {
   Auth = 'auth',
   ReAuth = 're_auth',
-  GetOrderState = 'gos'
+  GetOrderState = 'gos',
 }
 
 export enum AccSummaryIDs {
   AccountSummaryBtc = 'acc_summary/BTC',
   AccountSummaryEth = 'acc_summary/ETH',
   AccountSummaryUsdc = 'acc_summary/USDC',
-  AccountSummaryUsdt = 'acc_summary/USDT'
+  AccountSummaryUsdt = 'acc_summary/USDT',
 }
 
 export enum PublicSubscriptions {
@@ -41,47 +41,42 @@ export enum PublicMethods {
   GetIndex = 'public/get_index',
   GetInstrument = 'public/get_instrument',
   Ticker = 'public/ticker',
-  PublicSubscribe = 'public/subscribe'
+  PublicSubscribe = 'public/subscribe',
 }
 
 export enum PrivateMethods {
   AccountSummary = 'private/get_account_summary',
   PrivateSubscribe = 'private/subscribe',
-  GetOrderState = 'private/get_order_state'
+  GetOrderState = 'private/get_order_state',
 }
 
 export type Methods = PublicMethods | PrivateMethods;
 
-type RpcIDs =
-  IDs |
-  PublicSubscriptions |
-  PrivateSubscriptions |
-  AccSummaryIDs |
-  string; // open_order() has id like `o/${order_id}`;
+type RpcIDs = IDs | PublicSubscriptions | PrivateSubscriptions | AccSummaryIDs | string; // open_order() has id like `o/${order_id}`;
 
 export type RpcError = {
-  code: number
-  message: string
-}
+  code: number;
+  message: string;
+};
 
 interface RpcMsg {
-  id: RpcIDs
-  usIn: number,
-  usOut: number,
-  usDiff: number,
-  error?: RpcError
+  id: RpcIDs;
+  usIn: number;
+  usOut: number;
+  usDiff: number;
+  error?: RpcError;
 }
 
 export enum Currencies {
   BTC = 'BTC',
   ETH = 'ETH',
   USDC = 'USDC',
-  USDT = 'USDT'
+  USDT = 'USDT',
 }
 
 export enum Instruments {
   BTC_PERPETUAL = 'BTC-PERPETUAL',
-  ETH_PERPETUAL = 'ETH-PERPETUAL'
+  ETH_PERPETUAL = 'ETH-PERPETUAL',
 }
 
 export enum Kinds {
@@ -89,288 +84,286 @@ export enum Kinds {
   option = 'option',
   spot = 'spot',
   future_combo = 'future_combo',
-  option_combo = 'option_combo'
+  option_combo = 'option_combo',
 }
 
 export enum TimeInForce {
   GTC = 'good_til_cancelled', // default on Deribit
   GTD = 'good_til_day',
   FOK = 'fill_or_kill',
-  IOK = 'immediate_or_cancel'
+  IOK = 'immediate_or_cancel',
 }
 
 export enum OrderType {
   limit = 'limit', // default on Deribit
   market = 'market',
-  liquidation = 'liquidation' // only in trades, unable to pass in outgoing order
+  liquidation = 'liquidation', // only in trades, unable to pass in outgoing order
 }
 
 export type OrderStates =
-  'open' |     // Deribit state
-  'filled' |   // Deribit state
-  'rejected' | // Deribit state
-  'cancelled'  // Deribit state
+  | 'open' // Deribit state
+  | 'filled' // Deribit state
+  | 'rejected' // Deribit state
+  | 'cancelled'; // Deribit state
 
 export enum OrderDirections {
   buy = 'buy',
-  sell = 'sell'
+  sell = 'sell',
 }
 
 export interface Order {
-  time_in_force: TimeInForce
-  reduce_only?: boolean
-  price?: number
-  post_only?: boolean
-  order_type: OrderType
-  order_state: OrderStates
-  order_id: string
-  max_show?: number
-  last_update_timestamp: number
-  label: string
-  is_rebalance?: boolean
-  is_liquidation?: boolean
-  instrument_name: Instruments
-  filled_amount: number
-  direction: OrderDirections
-  creation_timestamp?: number
-  average_price?: number
-  api?: boolean
-  amount: number
+  time_in_force: TimeInForce;
+  reduce_only?: boolean;
+  price?: number;
+  post_only?: boolean;
+  order_type: OrderType;
+  order_state: OrderStates;
+  order_id: string;
+  max_show?: number;
+  last_update_timestamp: number;
+  label: string;
+  is_rebalance?: boolean;
+  is_liquidation?: boolean;
+  instrument_name: Instruments;
+  filled_amount: number;
+  direction: OrderDirections;
+  creation_timestamp?: number;
+  average_price?: number;
+  api?: boolean;
+  amount: number;
 }
 
 export interface Trade {
-  trade_seq: number
-  trade_id: string
-  timestamp: number
-  tick_direction: 0 | 1 | 2 | 3 // 0 = Plus Tick, 1 = Zero-Plus Tick, 2 = Minus Tick, 3 = Zero-Minus Tick
-  state: OrderStates
-  reduce_only: boolean
-  price: number
-  post_only: boolean
-  order_type: OrderType
-  order_id: string
-  matching_id: null
-  mark_price: number
-  liquidity: 'M' | 'T' // "M" when it was maker order, "T" when it was taker order
-  label: string
-  instrument_name: Instruments
-  index_price: number
-  fee_currency: Currencies
-  fee: number
-  direction: OrderDirections
-  amount: number
+  trade_seq: number;
+  trade_id: string;
+  timestamp: number;
+  tick_direction: 0 | 1 | 2 | 3; // 0 = Plus Tick, 1 = Zero-Plus Tick, 2 = Minus Tick, 3 = Zero-Minus Tick
+  state: OrderStates;
+  reduce_only: boolean;
+  price: number;
+  post_only: boolean;
+  order_type: OrderType;
+  order_id: string;
+  matching_id: null;
+  mark_price: number;
+  liquidity: 'M' | 'T'; // "M" when it was maker order, "T" when it was taker order
+  label: string;
+  instrument_name: Instruments;
+  index_price: number;
+  fee_currency: Currencies;
+  fee: number;
+  direction: OrderDirections;
+  amount: number;
 }
 
 export interface Position {
-  average_price: number
-  delta: number
-  direction: OrderDirections | 'zero'
-  estimated_liquidation_price: number
-  floating_profit_loss: number
-  index_price: number
-  initial_margin: number
-  instrument_name: Instruments
-  interest_value : number
-  kind: Kinds
-  leverage: number
-  maintenance_margin: number
-  mark_price: number
-  open_orders_margin: number
-  realized_funding: number
-  realized_profit_loss: number
-  settlement_price: number
-  size: number
-  size_currency: number
-  total_profit_loss: number
+  average_price: number;
+  delta: number;
+  direction: OrderDirections | 'zero';
+  estimated_liquidation_price: number;
+  floating_profit_loss: number;
+  index_price: number;
+  initial_margin: number;
+  instrument_name: Instruments;
+  interest_value: number;
+  kind: Kinds;
+  leverage: number;
+  maintenance_margin: number;
+  mark_price: number;
+  open_orders_margin: number;
+  realized_funding: number;
+  realized_profit_loss: number;
+  settlement_price: number;
+  size: number;
+  size_currency: number;
+  total_profit_loss: number;
 }
 
 export interface OrderParams {
-  instrument_name: Instruments
-  amount: number
-  type: OrderType
-  price?: number
-  time_in_force: TimeInForce
-  direction: OrderDirections
+  instrument_name: Instruments;
+  amount: number;
+  type: OrderType;
+  price?: number;
+  time_in_force: TimeInForce;
+  direction: OrderDirections;
 }
 
 export interface OrderData {
-  initial?: OrderParams
-  is_pending: boolean
-  is_error: boolean
-  rpc_error_message?: RpcMsg
-  order_rpc_message_results: Order[]
-  state: null | OrderStates
+  initial?: OrderParams;
+  is_pending: boolean;
+  is_error: boolean;
+  rpc_error_message?: RpcMsg;
+  order_rpc_message_results: Order[];
+  state: null | OrderStates;
 }
 
 export interface SubscriptionParams {
-  channel: Subscriptions,
-  data: BTCIndexData | PerpetualTickerData | UserChanges | UserPortfolio
+  channel: Subscriptions;
+  data: BTCIndexData | PerpetualTickerData | UserChanges | UserPortfolio;
 }
 
 export interface DeribitSubscription {
-  method: 'subscription'
-  params: SubscriptionParams
+  method: 'subscription';
+  params: SubscriptionParams;
 }
 
 export interface BTCIndexData {
-  index_name: 'btc_usd'
-  price: number
-  timestamp: number
+  index_name: 'btc_usd';
+  price: number;
+  timestamp: number;
 }
 
 export interface PerpetualTickerData {
-  timestamp: number,
+  timestamp: number;
   stats: {
-    volume_usd: number,
-    volume: number,
-    price_change: number,
-    low: number,
-    high: number
-  },
-  state: string,
-  settlement_price: number,
-  open_interest: number,
-  min_price: number,
-  max_price: number,
-  mark_price: number,
-  last_price: number,
-  interest_value: number,
-  instrument_name: Instruments.BTC_PERPETUAL | Instruments.ETH_PERPETUAL,
-  index_price: number,
-  funding_8h: number,
-  estimated_delivery_price: number,
-  current_funding: number,
-  best_bid_price: number,
-  best_bid_amount: number,
-  best_ask_price: number,
-  best_ask_amount: number
+    volume_usd: number;
+    volume: number;
+    price_change: number;
+    low: number;
+    high: number;
+  };
+  state: string;
+  settlement_price: number;
+  open_interest: number;
+  min_price: number;
+  max_price: number;
+  mark_price: number;
+  last_price: number;
+  interest_value: number;
+  instrument_name: Instruments.BTC_PERPETUAL | Instruments.ETH_PERPETUAL;
+  index_price: number;
+  funding_8h: number;
+  estimated_delivery_price: number;
+  current_funding: number;
+  best_bid_price: number;
+  best_bid_amount: number;
+  best_ask_price: number;
+  best_ask_amount: number;
 }
 
 // https://docs.deribit.com/#user-changes-kind-currency-interval
 export interface UserChanges {
-  instrument_name: Instruments
-  trades: Trade[]
-  positions: Position[]
-  orders: Order[]
+  instrument_name: Instruments;
+  trades: Trade[];
+  positions: Position[];
+  orders: Order[];
 }
 
 // describe
 // https://docs.deribit.com/#user-portfolio-currency
-export interface UserPortfolio {
-
-}
+export interface UserPortfolio {}
 
 export interface AccountsSummary {
-  BTC: null | AccountSummary
-  ETH: null | AccountSummary
-  USDC: null | AccountSummary
-  USDT: null | AccountSummary
+  BTC: null | AccountSummary;
+  ETH: null | AccountSummary;
+  USDC: null | AccountSummary;
+  USDT: null | AccountSummary;
 }
 
 // https://docs.deribit.com/#private-get_account_summary
 // todo finalize structure
 export interface AccountSummary {
   delta_total_map: {
-    btc_usd: any
-  },
-  margin_balance: number,
-  futures_session_rpl: number,
-  options_session_rpl: number,
+    btc_usd: any;
+  };
+  margin_balance: number;
+  futures_session_rpl: number;
+  options_session_rpl: number;
   estimated_liquidation_ratio_map: {
-    btc_usd: number
-  },
-  session_upl: number,
-  email: string,
-  system_name: string,
-  username: string,
-  interuser_transfers_enabled: boolean,
-  id: number,
-  estimated_liquidation_ratio: number,
+    btc_usd: number;
+  };
+  session_upl: number;
+  email: string;
+  system_name: string;
+  username: string;
+  interuser_transfers_enabled: boolean;
+  id: number;
+  estimated_liquidation_ratio: number;
   options_gamma_map: {
-    btc_usd: number
-  },
-  options_vega: number,
-  options_value: number,
-  available_withdrawal_funds: number,
-  projected_delta_total: number,
-  maintenance_margin: number,
-  total_pl: number,
+    btc_usd: number;
+  };
+  options_vega: number;
+  options_value: number;
+  available_withdrawal_funds: number;
+  projected_delta_total: number;
+  maintenance_margin: number;
+  total_pl: number;
   limits: {
     non_matching_engine: {
-      rate: number,
-      burst: number
-    },
+      rate: number;
+      burst: number;
+    };
     matching_engine: {
-      rate: number,
-      burst: number
-    }
-  },
+      rate: number;
+      burst: number;
+    };
+  };
   options_theta_map: {
-    btc_usd: number
-  },
-  projected_maintenance_margin: number,
-  available_funds: number,
-  login_enabled: boolean,
-  options_delta: number,
-  balance: number,
-  security_keys_enabled: boolean,
-  referrer_id: null | number,
-  mmp_enabled: boolean,
-  equity: number,
-  futures_session_upl: number,
-  fee_balance: number,
-  currency: Currencies,
-  options_session_upl: number,
-  projected_initial_margin: number,
-  options_theta: number,
-  creation_timestamp: number,
-  self_trading_extended_to_subaccounts: boolean,
-  portfolio_margining_enabled: boolean,
-  cross_collateral_enabled: boolean,
-  margin_model: string,
+    btc_usd: number;
+  };
+  projected_maintenance_margin: number;
+  available_funds: number;
+  login_enabled: boolean;
+  options_delta: number;
+  balance: number;
+  security_keys_enabled: boolean;
+  referrer_id: null | number;
+  mmp_enabled: boolean;
+  equity: number;
+  futures_session_upl: number;
+  fee_balance: number;
+  currency: Currencies;
+  options_session_upl: number;
+  projected_initial_margin: number;
+  options_theta: number;
+  creation_timestamp: number;
+  self_trading_extended_to_subaccounts: boolean;
+  portfolio_margining_enabled: boolean;
+  cross_collateral_enabled: boolean;
+  margin_model: string;
   options_vega_map: {
-    btc_usd: number
-  },
-  futures_pl: number,
-  options_pl: number,
-  type: string,
-  self_trading_reject_mode: string,
-  initial_margin: number,
-  spot_reserve: number,
-  delta_total: number,
-  options_gamma: number,
-  session_rpl: number
+    btc_usd: number;
+  };
+  futures_pl: number;
+  options_pl: number;
+  type: string;
+  self_trading_reject_mode: string;
+  initial_margin: number;
+  spot_reserve: number;
+  delta_total: number;
+  options_gamma: number;
+  session_rpl: number;
 }
 
 export interface RpcAuthMsg extends RpcMsg {
-  id: IDs.Auth | IDs.ReAuth
+  id: IDs.Auth | IDs.ReAuth;
   result: {
-    token_type: string,
-    scope: string,
-    refresh_token: string,
-    expires_in: number,
-    access_token: string
-  },
+    token_type: string;
+    scope: string;
+    refresh_token: string;
+    expires_in: number;
+    access_token: string;
+  };
 }
 
 export interface RpcSubscribedMsg extends RpcMsg {
-  id: Subscriptions
-  result: Subscriptions[]
+  id: Subscriptions;
+  result: Subscriptions[];
 }
 
 // https://docs.deribit.com/#private-buy
 // https://docs.deribit.com/#private-sell
 export interface OpenOrderMsg extends RpcMsg {
-  id: string
+  id: string;
   result: {
-    trades: Trade[]
-    order: Order
-  }
+    trades: Trade[];
+    order: Order;
+  };
 }
 
 export interface RpcAccSummaryMsg extends RpcMsg {
-  id: AccSummaryIDs,
-  result: AccountSummary
+  id: AccSummaryIDs;
+  result: AccountSummary;
 }
 
 export type RpcMessages = RpcAuthMsg | RpcSubscribedMsg | RpcAccSummaryMsg | OpenOrderMsg;

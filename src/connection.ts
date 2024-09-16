@@ -1,10 +1,7 @@
 import WebSocket from 'ws';
-import {clearInterval} from 'timers';
+import { clearInterval } from 'timers';
 import EventEmitter from 'events';
-import {
-  is_value_in_enum,
-  remove_elements_from_existing_array
-} from '@igorpronin/utils';
+import { is_value_in_enum, remove_elements_from_existing_array } from '@igorpronin/utils';
 import {
   AccountsSummary,
   AccSummaryIDs,
@@ -21,52 +18,48 @@ import {
   Subscriptions,
   OrderParams,
   OrderData,
-  OpenOrderMsg
+  OpenOrderMsg,
 } from './types';
-import {
-  get_account_summary,
-  open_order,
-  subscribe
-} from './actions';
+import { get_account_summary, open_order, subscribe } from './actions';
 
 type AuthData = {
-  state: boolean
-  refresh_token: null | string
-  access_token: null | string
-  expires_in: null | number
+  state: boolean;
+  refresh_token: null | string;
+  access_token: null | string;
+  expires_in: null | number;
   scope: {
-    raw: null | string
-  }
-}
+    raw: null | string;
+  };
+};
 
 enum WssApiUrls {
   prod = 'wss://www.deribit.com/ws/api/v2',
-  test = 'wss://test.deribit.com/ws/api/v2'
+  test = 'wss://test.deribit.com/ws/api/v2',
 }
 
 type Params = {
-  api_env: 'prod' | 'test'
-  api_key: string
-  client_id: string
-  instance_id?: string
-  on_open?: () => void
-  on_close?: () => void
-  on_error?: (error?: Error) => void
-  on_message: (message: RpcMessages) => void
-  subscriptions?: Subscriptions[]
-}
+  api_env: 'prod' | 'test';
+  api_key: string;
+  client_id: string;
+  instance_id?: string;
+  on_open?: () => void;
+  on_close?: () => void;
+  on_error?: (error?: Error) => void;
+  on_message: (message: RpcMessages) => void;
+  subscriptions?: Subscriptions[];
+};
 
 type Orders = {
-  pending_orders_amount: number
-  all: {[id: string]: OrderData}
-  list: OrderData[]
-  by_ref_id: {[id: string]: OrderData}
-}
+  pending_orders_amount: number;
+  all: { [id: string]: OrderData };
+  list: OrderData[];
+  by_ref_id: { [id: string]: OrderData };
+};
 
 export class DeribitClient {
-  private msg_prefix = '[Deribit client]'
-  private refresh_interval = 550 // Refresh authorisation interval in seconds
-  private subscriptions_check_time = 5 // Time in seconds after ws opened and authorized to check if pending subscriptions still exist
+  private msg_prefix = '[Deribit client]';
+  private refresh_interval = 550; // Refresh authorisation interval in seconds
+  private subscriptions_check_time = 5; // Time in seconds after ws opened and authorized to check if pending subscriptions still exist
 
   client: WebSocket;
 
@@ -77,25 +70,25 @@ export class DeribitClient {
   private client_id: string;
   private on_open: () => void;
   private on_close: () => void;
-  private on_message: (message: string) => void
-  private on_error: (error: Error) => void
+  private on_message: (message: string) => void;
+  private on_error: (error: Error) => void;
 
-  private connection_opened_at: null | Date = null
-  private authorized_at: null | Date = null
+  private connection_opened_at: null | Date = null;
+  private authorized_at: null | Date = null;
 
   private refresh_counter: number = 0;
-  private refresh_counter_id: any
+  private refresh_counter_id: any;
 
-  private requested_subscriptions: Subscriptions[] = []
-  private pending_subscriptions: Subscriptions[] = []
-  private active_subscriptions: Subscriptions[] = []
+  private requested_subscriptions: Subscriptions[] = [];
+  private pending_subscriptions: Subscriptions[] = [];
+  private active_subscriptions: Subscriptions[] = [];
 
   private orders: Orders = {
     pending_orders_amount: 0,
     all: {},
     list: [],
-    by_ref_id: {}
-  }
+    by_ref_id: {},
+  };
 
   private auth_data: AuthData = {
     state: false,
@@ -103,23 +96,23 @@ export class DeribitClient {
     access_token: null,
     expires_in: null,
     scope: {
-      raw: null
-    }
-  }
+      raw: null,
+    },
+  };
 
   private accounts_summary: AccountsSummary = {
     BTC: null,
     ETH: null,
     USDC: null,
-    USDT: null
-  }
+    USDT: null,
+  };
 
   private count_refresh = () => {
     return setInterval(() => {
       this.refresh_counter++;
       this.handle_refresh_counter();
     }, 1000);
-  }
+  };
 
   private handle_refresh_counter = () => {
     if (this.refresh_counter === this.refresh_interval) {
@@ -127,11 +120,11 @@ export class DeribitClient {
       this.refresh_counter = 0;
       this.re_auth();
     }
-  }
+  };
 
   private to_console = (msg: string) => {
     console.log(`${this.msg_prefix} ${msg}`);
-  }
+  };
 
   private auth = () => {
     this.to_console(`Initial Deribit authorisation for the client ${this.client_id} processing...`);
@@ -142,11 +135,11 @@ export class DeribitClient {
       params: {
         grant_type: 'client_credentials',
         client_id: this.client_id,
-        client_secret: this.api_key
-      }
+        client_secret: this.api_key,
+      },
     };
     this.client.send(JSON.stringify(msg));
-  }
+  };
 
   private re_auth = () => {
     this.to_console(`Deribit re authorisation for the client ${this.client_id} processing...`);
@@ -156,20 +149,20 @@ export class DeribitClient {
       method: PublicMethods.Auth,
       params: {
         grant_type: 'refresh_token',
-        refresh_token: this.auth_data.refresh_token
-      }
+        refresh_token: this.auth_data.refresh_token,
+      },
     };
     this.client.send(JSON.stringify(msg));
-  }
+  };
 
   private handle_rpc_error = (msg: string, is_critical: boolean, error: RpcError) => {
-    const {code, message} = error;
+    const { code, message } = error;
     const m = `${msg} (message: ${message}, code: ${code})`;
     this.to_console(m);
     if (is_critical) {
       throw new Error(m);
     }
-  }
+  };
 
   private handle_auth_message = (msg: RpcAuthMsg, is_re_auth: boolean) => {
     let success_msg, err_msg;
@@ -195,32 +188,32 @@ export class DeribitClient {
         this.ee.emit('authorized');
       }
     }
-  }
+  };
 
   private init_pending_subscriptions_check = () => {
     setTimeout(() => {
       if (this.pending_subscriptions.length) {
         let m = 'WARNING! Pending subscriptions still exist';
-        this.pending_subscriptions.forEach(s => {
+        this.pending_subscriptions.forEach((s) => {
           m += `\n   ${s}`;
-        })
+        });
         this.to_console(m);
       }
     }, this.subscriptions_check_time * 1000);
-  }
+  };
 
   private handle_subscribed_message = (msg: RpcSubscribedMsg) => {
     if (msg.error) {
       this.handle_rpc_error('Subscription error', true, msg.error);
     }
-    const {result} = msg;
-    result.forEach(subscription => {
+    const { result } = msg;
+    result.forEach((subscription) => {
       remove_elements_from_existing_array(this.pending_subscriptions, subscription);
       this.active_subscriptions.push(subscription);
       this.ee.emit('subscribed', subscription);
       this.to_console(`Subscribed on ${subscription}`);
-    })
-  }
+    });
+  };
 
   private handle_open_order_message = (msg: OpenOrderMsg) => {
     const id = msg.id.split('/')[1];
@@ -233,7 +226,7 @@ export class DeribitClient {
       return;
     }
     const order = msg.result.order;
-    const {order_id, order_state} = order;
+    const { order_id, order_state } = order;
     order_data.order_rpc_message_results.push(order);
     if (!this.orders.by_ref_id[order_id]) {
       this.orders.by_ref_id[order_id] = order_data;
@@ -241,19 +234,20 @@ export class DeribitClient {
     if (!order_data.state) {
       order_data.state = order_state;
     }
-    const is_closing_states = order_state === 'filled' || order_state === 'rejected' || order_state === 'cancelled';
+    const is_closing_states =
+      order_state === 'filled' || order_state === 'rejected' || order_state === 'cancelled';
     if (order_data.state === 'open' && is_closing_states) {
       order_data.state = order_state;
     }
-  }
+  };
 
   private subscribe_on_requested = () => {
-    this.requested_subscriptions.forEach(subscription => {
-      this.to_console(`Subscribing on ${subscription}...`)
+    this.requested_subscriptions.forEach((subscription) => {
+      this.to_console(`Subscribing on ${subscription}...`);
       subscribe(this.client, subscription);
       this.pending_subscriptions.push(subscription);
-    })
-  }
+    });
+  };
 
   // Warning: method doesn't work as expected (request accepts, but there is no any response)
   private get_accounts_summary_from_deribit = () => {
@@ -265,7 +259,7 @@ export class DeribitClient {
     get_account_summary(this.client, Currencies.USDC);
     this.to_console(`Getting account summary for currency ${Currencies.USDT}...`);
     get_account_summary(this.client, Currencies.USDT);
-  }
+  };
 
   public get_pending_subscriptions = () => this.pending_subscriptions;
 
@@ -283,23 +277,15 @@ export class DeribitClient {
       is_pending: true,
       is_error: false,
       order_rpc_message_results: [],
-      state: null
-    }
+      state: null,
+    };
     this.orders.all[id] = order_data;
     this.orders.list.push(order_data);
-  }
+  };
 
   constructor(params: Params) {
-    const {
-      api_env,
-      api_key,
-      client_id,
-      on_open,
-      on_close,
-      on_message,
-      on_error,
-      subscriptions
-    } = params;
+    const { api_env, api_key, client_id, on_open, on_close, on_message, on_error, subscriptions } =
+      params;
     if (!api_env || !is_value_in_enum(api_env, ['prod', 'test'])) {
       throw new Error('Invalid API environment');
     }
@@ -322,12 +308,12 @@ export class DeribitClient {
       if (on_open) {
         on_open();
       }
-    }
+    };
     this.on_close = () => {
       if (on_close) {
         on_close();
       }
-    }
+    };
     this.on_error = (error) => {
       console.error(`${this.msg_prefix} WebSocket error`);
       console.error('WebSocket error:', error);
