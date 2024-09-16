@@ -1,6 +1,6 @@
 {
   "name": "@igorpronin/deribit-client",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Deribit client for internal purposes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,6 +9,8 @@
     "build": "tsc",
     "clear": "rm -rf ./dist",
     "dev": "nodemon ./src/index.ts",
+    "format": "prettier --write \"./src/**/*.ts\"",
+    "format:tools": "prettier --write \"./tools/*.js\"",
     "test": "echo \"Error: no test specified\" && exit 1",
     "stats": "./tools/git-daily-stats.sh",
     "permit": "chmod +x ./tools/update-version.sh && chmod +x ./tools/git-commit.sh && chmod +x ./tools/release.sh && chmod +x ./tools/build-and-publish.sh && chmod +x ./tools/git-daily-stats.sh",
@@ -27,12 +29,13 @@
     "@types/events": "^3.0.3",
     "@types/node": "^20.11.26",
     "nodemon": "^3.1.0",
+    "prettier": "^3.3.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.2"
   },
   "dependencies": {
-    "@types/ws": "^8.5.10",
     "@igorpronin/utils": "^1.0.4",
+    "@types/ws": "^8.5.10",
     "events": "^3.3.0",
     "ws": "^8.16.0"
   }

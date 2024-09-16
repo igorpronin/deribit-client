@@ -39,13 +39,19 @@ type AuthData = {
   }
 }
 
+enum WssApiUrls {
+  prod = 'wss://www.deribit.com/ws/api/v2',
+  test = 'wss://test.deribit.com/ws/api/v2'
+}
+
 type Params = {
-  ws_api_url: string
+  api_env: 'prod' | 'test'
   api_key: string
   client_id: string
+  instance_id?: string
   on_open?: () => void
   on_close?: () => void
-  on_error?: () => void
+  on_error?: (error?: Error) => void
   on_message: (message: RpcMessages) => void
   subscriptions?: Subscriptions[]
 }
@@ -72,7 +78,7 @@ export class DeribitClient {
   private on_open: () => void;
   private on_close: () => void;
   private on_message: (message: string) => void
-  private on_error: () => void
+  private on_error: (error: Error) => void
 
   private connection_opened_at: null | Date = null
   private authorized_at: null | Date = null
@@ -285,7 +291,7 @@ export class DeribitClient {
 
   constructor(params: Params) {
     const {
-      ws_api_url,
+      api_env,
       api_key,
       client_id,
       on_open,
@@ -294,10 +300,16 @@ export class DeribitClient {
       on_error,
       subscriptions
     } = params;
-    this.ws_api_url = ws_api_url;
+    if (!api_env || !is_value_in_enum(api_env, ['prod', 'test'])) {
+      throw new Error('Invalid API environment');
+    }
+    if (params.instance_id) {
+      this.msg_prefix = `[Deribit client (${params.instance_id})]`;
+    }
+    this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
     this.api_key = api_key;
     this.client_id = client_id;
-    this.client = new WebSocket(ws_api_url);
+    this.client = new WebSocket(this.ws_api_url);
     if (subscriptions) {
       this.requested_subscriptions = subscriptions;
     }
@@ -316,9 +328,11 @@ export class DeribitClient {
         on_close();
       }
     }
-    this.on_error = () => {
+    this.on_error = (error) => {
+      console.error(`${this.msg_prefix} WebSocket error`);
+      console.error('WebSocket error:', error);
       if (on_error) {
-        on_error();
+        on_error(error);
       }
     };
     this.on_message = (message) => {
@@ -349,7 +363,7 @@ export class DeribitClient {
         return;
       }
 
-      if (parsed.id.startsWith('o/')) {
+      if (parsed.id?.startsWith('o/')) {
         this.handle_open_order_message(parsed as OpenOrderMsg);
         return;
       }

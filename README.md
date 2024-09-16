@@ -2,6 +2,8 @@
 
 Deribit client for internal purposes
 
+> **Warning**: This package is currently in active development and is not recommended for production use.
+
 ## Install
 
 ```npm i @igorpronin/deribit-client```
@@ -16,7 +18,7 @@ import {
 } from '@igorpronin/deribit-client';
 
 const client = new DeribitClient({
-  ws_api_url: DEPIBIT_WS_API_URL,
+  api_env: 'prod', // 'prod' or 'test'
   api_key: DERIBIT_API_KEY,
   client_id: DERIBIT_API_CLIENT_ID,
   on_message: (msg) => {console.log(msg)},
