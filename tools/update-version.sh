@@ -39,7 +39,16 @@ esac
 # Join the version parts back into a string
 new_version="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
 
-# Update package.json with the new version
-sed -i '' "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" package.json
+# Confirmation step
+read -p "Are you sure you want to update from $current_version to $new_version? (y/n) " -n 1 -r
+echo    # Move to a new line
 
-echo "Version updated from $current_version to $new_version"
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+    # Update package.json with the new version
+    sed -i '' "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" package.json
+    echo "Version updated from $current_version to $new_version"
+else
+    echo "Version update cancelled."
+    exit 1
+fi
