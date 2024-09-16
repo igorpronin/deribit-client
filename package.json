@@ -1,6 +1,6 @@
 {
   "name": "@igorpronin/deribit-client",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "Deribit client for internal purposes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,7 +10,7 @@
     "clear": "rm -rf ./dist",
     "dev": "nodemon ./src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "permit": "chmod +x update-version.sh && chmod +x git-commit.sh"
+    "permit": "chmod +x update-version.sh && chmod +x git-commit.sh && chmod +x update-and-commit.sh"
   },
   "repository": {
     "type": "git",
