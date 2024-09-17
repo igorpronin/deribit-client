@@ -18,9 +18,19 @@ import {
   Subscriptions,
   OrderParams,
   OrderData,
-  OpenOrderMsg,
+  RpcOpenOrderMsg,
+  RpcAccSummariesMsg,
+  RpcSubscriptionMsg,
+  Portfolio,
+  UserPortfolioByCurrency,
 } from './types';
-import { get_account_summary, open_order, subscribe } from './actions';
+import {
+  get_account_summary,
+  get_account_summaries,
+  open_order,
+  subscribe,
+  subscribe_to_portfolio,
+} from './actions';
 
 type AuthData = {
   state: boolean;
@@ -37,9 +47,12 @@ enum WssApiUrls {
   test = 'wss://test.deribit.com/ws/api/v2',
 }
 
+type ApiEnv = 'prod' | 'test';
+
 type Params = {
-  api_env: 'prod' | 'test';
+  api_env: ApiEnv;
   api_key: string;
+  currencies: Currencies[];
   client_id: string;
   instance_id?: string;
   on_open?: () => void;
@@ -65,9 +78,13 @@ export class DeribitClient {
 
   public ee: EventEmitter;
 
+  private api_env: ApiEnv;
   private ws_api_url: string;
   private api_key: string;
   private client_id: string;
+  private username: string | undefined;
+  private acc_type: string | undefined;
+  private currencies: Currencies[];
   private on_open: () => void;
   private on_close: () => void;
   private on_message: (message: string) => void;
@@ -80,6 +97,7 @@ export class DeribitClient {
   private refresh_counter_id: any;
 
   private requested_subscriptions: Subscriptions[] = [];
+  private obligatory_subscriptions: Subscriptions[] = [PrivateSubscriptions.ChangesAnyAny];
   private pending_subscriptions: Subscriptions[] = [];
   private active_subscriptions: Subscriptions[] = [];
 
@@ -107,6 +125,144 @@ export class DeribitClient {
     USDT: null,
   };
 
+  private portfolio: Portfolio = {
+    BTC: null,
+    ETH: null,
+    USDC: null,
+    USDT: null,
+  };
+
+  constructor(params: Params) {
+    const {
+      api_env,
+      api_key,
+      client_id,
+      on_open,
+      on_close,
+      on_message,
+      on_error,
+      subscriptions,
+      currencies,
+    } = params;
+    if (!api_env || !is_value_in_enum(api_env, ['prod', 'test'])) {
+      throw new Error('Invalid API environment');
+    }
+    
+    if (params.instance_id) {
+      this.msg_prefix = `[Deribit client (${params.instance_id})]`;
+    }
+    this.api_env = api_env;
+    this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
+    this.currencies = currencies;
+    this.api_key = api_key;
+    this.client_id = client_id;
+    this.client = new WebSocket(this.ws_api_url);
+    if (subscriptions) {
+      this.requested_subscriptions = subscriptions;
+    }
+
+    this.currencies.forEach((currency) => {
+      this.obligatory_subscriptions.push(`user.portfolio.${currency.toLowerCase()}` as Subscriptions);
+    });
+
+    this.ee = new EventEmitter();
+
+    this.on_open = () => {
+      this.connection_opened_at = new Date();
+      this.auth();
+      if (on_open) {
+        on_open();
+      }
+    };
+    this.on_close = () => {
+      if (on_close) {
+        on_close();
+      }
+    };
+    this.on_error = (error) => {
+      console.error(`${this.msg_prefix} WebSocket error`);
+      console.error('WebSocket error:', error);
+      if (on_error) {
+        on_error(error);
+      }
+    };
+    this.on_message = (message) => {
+      const parsed: RpcMessages = JSON.parse(message);
+
+      if (parsed.error) {
+        this.to_console(`RPC error: ${parsed.error.message}`, parsed.error);
+        return;
+      }
+
+      if ('method' in parsed && parsed.method === 'subscription') {
+        this.handle_subscription_message(parsed as RpcSubscriptionMsg);
+        return;
+      }
+
+      if (parsed.id === IDs.Auth) {
+        this.handle_auth_message(parsed as RpcAuthMsg, false);
+        this.subscribe_on_requested_and_obligatory();
+        this.init_pending_subscriptions_check();
+        this.get_account_summaries_by_tickers();
+        this.get_account_summaries();
+        return;
+      }
+
+      if (parsed.id === IDs.ReAuth) {
+        this.handle_auth_message(parsed as RpcAuthMsg, true);
+        return;
+      }
+
+      if (
+        is_value_in_enum(parsed.id, PublicSubscriptions) ||
+        is_value_in_enum(parsed.id, PrivateSubscriptions)
+      ) {
+        this.handle_subscribed_message(parsed as RpcSubscribedMsg);
+        if (this.pending_subscriptions.length === 0) {
+          this.ee.emit('subscribed_all');
+        }
+        return;
+      }
+
+      if (parsed.id?.startsWith('o/')) {
+        this.handle_open_order_message(parsed as RpcOpenOrderMsg);
+        return;
+      }
+
+      if (is_value_in_enum(parsed.id, AccSummaryIDs)) {
+        if ('result' in parsed) {
+          const currency = parsed.id.split('/')[1] as Currencies;
+          this.accounts_summary[currency] = parsed.result as AccountSummary;
+          this.to_console(`Account summary for the currency ${currency} updated`);
+        }
+        return;
+      }
+
+      if (parsed.id === IDs.AccSummaries) {
+        const data = parsed as RpcAccSummariesMsg;
+        this.username = data.result.username;
+        this.acc_type = data.result.type;
+        this.to_console(`Account summaries got`);
+      }
+
+      on_message(parsed as RpcMessages);
+    };
+
+    this.client.on('close', this.on_close);
+    this.client.on('open', this.on_open);
+    this.client.on('message', this.on_message);
+    this.client.on('error', this.on_error);
+  }
+
+  private to_console = (msg: string, error?: any) => {
+    if (!error) {
+      console.log(`${this.msg_prefix} ${msg}`);
+    } else {
+      console.error(`${this.msg_prefix} ${msg}`);
+      console.error(error);
+    }
+  };
+
   private count_refresh = () => {
     return setInterval(() => {
       this.refresh_counter++;
@@ -120,10 +276,6 @@ export class DeribitClient {
       this.refresh_counter = 0;
       this.re_auth();
     }
-  };
-
-  private to_console = (msg: string) => {
-    console.log(`${this.msg_prefix} ${msg}`);
   };
 
   private auth = () => {
@@ -215,7 +367,16 @@ export class DeribitClient {
     });
   };
 
-  private handle_open_order_message = (msg: OpenOrderMsg) => {
+  private handle_subscription_message = (msg: RpcSubscriptionMsg) => {
+    const { channel, data } = msg.params;
+    if (channel.startsWith('user.portfolio')) {
+      const currency = channel.split('.')[2].toUpperCase() as Currencies;
+      this.portfolio[currency] = data as UserPortfolioByCurrency;
+      this.ee.emit('portfolio_updated', currency);
+    }
+  };
+
+  private handle_open_order_message = (msg: RpcOpenOrderMsg) => {
     const id = msg.id.split('/')[1];
     const order_data = this.orders.all[id];
     order_data.is_pending = false;
@@ -241,24 +402,29 @@ export class DeribitClient {
     }
   };
 
-  private subscribe_on_requested = () => {
+  private subscribe_on_requested_and_obligatory = () => {
     this.requested_subscriptions.forEach((subscription) => {
+      this.to_console(`Subscribing on ${subscription}...`);
+      subscribe(this.client, subscription);
+      this.pending_subscriptions.push(subscription);
+    });
+    this.obligatory_subscriptions.forEach((subscription) => {
       this.to_console(`Subscribing on ${subscription}...`);
       subscribe(this.client, subscription);
       this.pending_subscriptions.push(subscription);
     });
   };
 
-  // Warning: method doesn't work as expected (request accepts, but there is no any response)
-  private get_accounts_summary_from_deribit = () => {
-    this.to_console(`Getting account summary for currency ${Currencies.BTC}...`);
-    get_account_summary(this.client, Currencies.BTC);
-    this.to_console(`Getting account summary for currency ${Currencies.ETH}...`);
-    get_account_summary(this.client, Currencies.ETH);
-    this.to_console(`Getting account summary for currency ${Currencies.USDC}...`);
-    get_account_summary(this.client, Currencies.USDC);
-    this.to_console(`Getting account summary for currency ${Currencies.USDT}...`);
-    get_account_summary(this.client, Currencies.USDT);
+  private get_account_summaries_by_tickers = () => {
+    this.currencies.forEach((currency) => {
+      this.to_console(`Getting account summary for currency ${currency}...`);
+      get_account_summary(this.client, currency);
+    });
+  };
+
+  private get_account_summaries = () => {
+    this.to_console(`Getting account summaries...`);
+    get_account_summaries(this.client);
   };
 
   public get_pending_subscriptions = () => this.pending_subscriptions;
@@ -282,92 +448,4 @@ export class DeribitClient {
     this.orders.all[id] = order_data;
     this.orders.list.push(order_data);
   };
-
-  constructor(params: Params) {
-    const { api_env, api_key, client_id, on_open, on_close, on_message, on_error, subscriptions } =
-      params;
-    if (!api_env || !is_value_in_enum(api_env, ['prod', 'test'])) {
-      throw new Error('Invalid API environment');
-    }
-    if (params.instance_id) {
-      this.msg_prefix = `[Deribit client (${params.instance_id})]`;
-    }
-    this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
-    this.api_key = api_key;
-    this.client_id = client_id;
-    this.client = new WebSocket(this.ws_api_url);
-    if (subscriptions) {
-      this.requested_subscriptions = subscriptions;
-    }
-
-    this.ee = new EventEmitter();
-
-    this.on_open = () => {
-      this.connection_opened_at = new Date();
-      this.auth();
-      if (on_open) {
-        on_open();
-      }
-    };
-    this.on_close = () => {
-      if (on_close) {
-        on_close();
-      }
-    };
-    this.on_error = (error) => {
-      console.error(`${this.msg_prefix} WebSocket error`);
-      console.error('WebSocket error:', error);
-      if (on_error) {
-        on_error(error);
-      }
-    };
-    this.on_message = (message) => {
-      const parsed: RpcMessages = JSON.parse(message);
-
-      if (parsed.id === IDs.Auth) {
-        this.handle_auth_message(parsed as RpcAuthMsg, false);
-        this.subscribe_on_requested();
-        this.init_pending_subscriptions_check();
-        // Warning: method doesn't work as expected (request accepts, but there is no any response)
-        // this.get_accounts_summary_from_deribit();
-        return;
-      }
-
-      if (parsed.id === IDs.ReAuth) {
-        this.handle_auth_message(parsed as RpcAuthMsg, true);
-        return;
-      }
-
-      if (
-        is_value_in_enum(parsed.id, PublicSubscriptions) ||
-        is_value_in_enum(parsed.id, PrivateSubscriptions)
-      ) {
-        this.handle_subscribed_message(parsed as RpcSubscribedMsg);
-        if (this.pending_subscriptions.length === 0) {
-          this.ee.emit('subscribed_all');
-        }
-        return;
-      }
-
-      if (parsed.id?.startsWith('o/')) {
-        this.handle_open_order_message(parsed as OpenOrderMsg);
-        return;
-      }
-
-      // Warning: method doesn't work as expected (request accepts, but there is no any response)
-      if (is_value_in_enum(parsed.id, AccSummaryIDs)) {
-        const currency = parsed.id.split('/')[1] as Currencies;
-        this.accounts_summary[currency] = parsed.result as AccountSummary;
-        this.to_console(`Account summary for the currency ${currency} updated`);
-        return;
-      }
-
-      on_message(parsed as RpcMessages);
-    };
-
-    this.client.on('close', this.on_close);
-    this.client.on('open', this.on_open);
-    this.client.on('message', this.on_message);
-    this.client.on('error', this.on_error);
-  }
 }

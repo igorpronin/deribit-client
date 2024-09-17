@@ -2,6 +2,7 @@ export enum IDs {
   Auth = 'auth',
   ReAuth = 're_auth',
   GetOrderState = 'gos',
+  AccSummaries = 'acc_summaries',
 }
 
 export enum AccSummaryIDs {
@@ -46,6 +47,7 @@ export enum PublicMethods {
 
 export enum PrivateMethods {
   AccountSummary = 'private/get_account_summary',
+  AccountSummaries = 'private/get_account_summaries',
   PrivateSubscribe = 'private/subscribe',
   GetOrderState = 'private/get_order_state',
 }
@@ -65,6 +67,11 @@ interface RpcMsg {
   usOut: number;
   usDiff: number;
   error?: RpcError;
+}
+
+export interface RpcSubscriptionMsg extends RpcMsg {
+  method: 'subscription';
+  params: SubscriptionParams;
 }
 
 export enum Currencies {
@@ -199,7 +206,7 @@ export interface OrderData {
 
 export interface SubscriptionParams {
   channel: Subscriptions;
-  data: BTCIndexData | PerpetualTickerData | UserChanges | UserPortfolio;
+  data: BTCIndexData | PerpetualTickerData | UserChanges | UserPortfolioByCurrency;
 }
 
 export interface DeribitSubscription {
@@ -249,9 +256,58 @@ export interface UserChanges {
   orders: Order[];
 }
 
-// describe
 // https://docs.deribit.com/#user-portfolio-currency
-export interface UserPortfolio {}
+export interface UserPortfolioByCurrency {
+  maintenance_margin: number;
+  delta_total: number;
+  options_session_rpl: number;
+  futures_session_rpl: number;
+  delta_total_map: {
+    btc_usd: number;
+  };
+  session_upl: number;
+  fee_balance: number;
+  estimated_liquidation_ratio: number;
+  initial_margin: number;
+  options_gamma_map: {
+    btc_usd: number;
+  };
+  futures_pl: number;
+  currency: Currencies;
+  options_value: number;
+  projected_maintenance_margin: number;
+  options_vega: number;
+  session_rpl: number;
+  futures_session_upl: number;
+  options_session_upl: number;
+  cross_collateral_enabled: boolean;
+  options_theta: number;
+  margin_model: 'segregated_sm';
+  options_delta: number;
+  options_pl: number;
+  balance: number;
+  additional_reserve: number;
+  projected_initial_margin: number;
+  available_funds: number;
+  spot_reserve: number;
+  projected_delta_total: number;
+  portfolio_margining_enabled: boolean;
+  total_pl: number;
+  margin_balance: number;
+  available_withdrawal_funds: number;
+  equity: number;
+  options_gamma: number;
+  options_vega_map: any;
+  estimated_liquidation_ratio_map: any;
+  options_theta_map: any;
+}
+
+export interface Portfolio {
+  BTC: null | UserPortfolioByCurrency;
+  ETH: null | UserPortfolioByCurrency;
+  USDC: null | UserPortfolioByCurrency;
+  USDT: null | UserPortfolioByCurrency;
+}
 
 export interface AccountsSummary {
   BTC: null | AccountSummary;
@@ -353,7 +409,7 @@ export interface RpcSubscribedMsg extends RpcMsg {
 
 // https://docs.deribit.com/#private-buy
 // https://docs.deribit.com/#private-sell
-export interface OpenOrderMsg extends RpcMsg {
+export interface RpcOpenOrderMsg extends RpcMsg {
   id: string;
   result: {
     trades: Trade[];
@@ -366,4 +422,18 @@ export interface RpcAccSummaryMsg extends RpcMsg {
   result: AccountSummary;
 }
 
-export type RpcMessages = RpcAuthMsg | RpcSubscribedMsg | RpcAccSummaryMsg | OpenOrderMsg;
+export interface RpcAccSummariesMsg extends RpcMsg {
+  id: IDs.AccSummaries;
+  result: {
+    username: string;
+    type: string;
+  };
+}
+
+export type RpcMessages =
+  | RpcAuthMsg
+  | RpcSubscribedMsg
+  | RpcSubscriptionMsg
+  | RpcAccSummaryMsg
+  | RpcOpenOrderMsg
+  | RpcAccSummariesMsg;

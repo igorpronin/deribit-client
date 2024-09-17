@@ -14,13 +14,16 @@ Deribit client for internal purposes
 import {
   DeribitClient,
   PublicSubscriptions,
-  PrivateSubscriptions
+  PrivateSubscriptions,
+  Currencies,
 } from '@igorpronin/deribit-client';
 
 const client = new DeribitClient({
-  api_env: 'prod', // 'prod' or 'test'
+  api_env: 'prod' as 'prod' | 'test',
   api_key: DERIBIT_API_KEY,
   client_id: DERIBIT_API_CLIENT_ID,
+  currencies: [Currencies.BTC, Currencies.USDT],
+  instance_id: account.instance_id, // optional
   on_message: (msg) => {console.log(msg)},
   subscriptions: [
     PublicSubscriptions.IndexPriceBtcUsd,
@@ -35,4 +38,5 @@ const client = new DeribitClient({
 client.ee.on('authorized', () => console.log('Authorized!'));  
 client.ee.on('subscribed', (msg: any) => console.log('Subscribed!', msg));
 client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
+client.ee.on('portfolio_updated', (ticker) => console.log('Portfolio updated!', ticker));
 ```

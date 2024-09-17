@@ -30,7 +30,12 @@ export const subscribe = (client: WebSocket, subscription: Subscriptions) => {
   return subscription;
 };
 
-// Warning: method doesn't work as expected (request accepts, but there is no any response)
+export const subscribe_to_portfolio = (client: WebSocket, currencies: Currencies[]) => {
+  currencies.forEach((currency) => {
+    subscribe(client, `user.portfolio.${currency}` as Subscriptions);
+  });
+};
+
 // https://docs.deribit.com/#private-get_account_summary
 // To read subaccount summary use subaccount_id parameter (not implemented yet)
 export const get_account_summary = (client: WebSocket, currency: Currencies) => {
@@ -45,20 +50,36 @@ export const get_account_summary = (client: WebSocket, currency: Currencies) => 
   switch (currency) {
     case Currencies.BTC:
       msg.id = AccSummaryIDs.AccountSummaryBtc;
-      return;
+      break;
     case Currencies.ETH:
       msg.id = AccSummaryIDs.AccountSummaryEth;
-      return;
+      break;
     case Currencies.USDC:
       msg.id = AccSummaryIDs.AccountSummaryUsdc;
-      return;
+      break;
     case Currencies.USDT:
       msg.id = AccSummaryIDs.AccountSummaryUsdt;
+      break;
+    default:
       return;
   }
   client.send(JSON.stringify(msg));
 };
 
+// https://docs.deribit.com/#private-get_account_summaries
+export const get_account_summaries = (client: WebSocket) => {
+  const msg: any = {
+    jsonrpc: '2.0',
+    id: IDs.AccSummaries,
+    method: PrivateMethods.AccountSummaries,
+    params: {
+      extended: true,
+    },
+  };
+  client.send(JSON.stringify(msg));
+};
+
+// https://docs.deribit.com/#private-get_order_state
 export const get_order_state_by_id = (client: WebSocket, order_id: string) => {
   const msg: any = {
     jsonrpc: '2.0',
