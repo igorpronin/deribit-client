@@ -12,6 +12,7 @@ export enum AccSummaryIDs {
   AccountSummaryUsdt = 'acc_summary/USDT',
 }
 
+// https://docs.deribit.com/#subscriptions
 export enum PublicSubscriptions {
   IndexPriceBtcUsd = 'deribit_price_index.btc_usd', // https://docs.deribit.com/#deribit_price_index-index_name
   IndexPriceEthUsd = 'deribit_price_index.eth_usd', // https://docs.deribit.com/#deribit_price_index-index_name
@@ -23,6 +24,7 @@ export enum PublicSubscriptions {
   TickerEthUsdtSpot = 'ticker.ETH_USDT.raw',
 }
 
+// https://docs.deribit.com/#subscriptions
 export enum PrivateSubscriptions {
   PortfolioBtc = 'user.portfolio.btc',
   PortfolioEth = 'user.portfolio.eth',
@@ -36,6 +38,10 @@ export enum PrivateSubscriptions {
 }
 
 export type Subscriptions = PublicSubscriptions | PrivateSubscriptions;
+
+// There are lot of indexes, update the type when necessary
+// https://docs.deribit.com/#public-get_index_price
+export type Indexes = 'btc_usd' | 'eth_usd';
 
 export enum PublicMethods {
   Auth = 'public/auth',
@@ -215,7 +221,7 @@ export interface DeribitSubscription {
 }
 
 export interface BTCIndexData {
-  index_name: 'btc_usd';
+  index_name: Indexes;
   price: number;
   timestamp: number;
 }

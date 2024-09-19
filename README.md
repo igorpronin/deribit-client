@@ -38,7 +38,8 @@ const client = new DeribitClient({
 client.ee.on('authorized', () => console.log('Authorized!'));  
 client.ee.on('subscribed', (msg: any) => console.log('Subscribed!', msg));
 client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
-client.ee.on('portfolio_updated', (ticker: any) => console.log('Portfolio updated!', ticker));
+client.ee.on('portfolio_updated', (ticker: Currencies) => console.log('Portfolio updated!', ticker));
+client.ee.on('index_updated', (pair: Indexes) => console.log('Index updated!', pair));
 
 client.ee.on('portfolio_updated') => {
   const acc_summary = client.get_accounts_summary();
@@ -65,3 +66,9 @@ Returns a boolean indicating whether there are any pending orders.
 
 ### open_order(params: OrderParams)
 Opens a new order with the specified parameters.
+
+### get_configuration()
+Returns the current configuration of the client.
+
+### get_index(index: Indexes)
+Returns the current index price for the specified currency pair.

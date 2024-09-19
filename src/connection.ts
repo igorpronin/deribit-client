@@ -23,6 +23,8 @@ import {
   RpcSubscriptionMsg,
   Portfolio,
   UserPortfolioByCurrency,
+  Indexes,
+  BTCIndexData,
 } from './types';
 import {
   get_account_summary,
@@ -132,6 +134,11 @@ export class DeribitClient {
     USDT: null,
   };
 
+  private indexes: { [key in Indexes]: number | null } = {
+    btc_usd: null,
+    eth_usd: null,
+  };
+
   constructor(params: Params) {
     const {
       api_env,
@@ -189,6 +196,8 @@ export class DeribitClient {
     this.on_message = (message) => {
       const parsed: RpcMessages = JSON.parse(message);
 
+      // console.log(parsed);
+
       if (parsed.error) {
         this.to_console(`RPC error: ${parsed.error.message}`, parsed.error);
         return;
@@ -196,6 +205,7 @@ export class DeribitClient {
 
       if ('method' in parsed && parsed.method === 'subscription') {
         this.handle_subscription_message(parsed as RpcSubscriptionMsg);
+        on_message(parsed as RpcMessages);
         return;
       }
 
@@ -205,11 +215,13 @@ export class DeribitClient {
         this.init_pending_subscriptions_check();
         this.get_account_summaries_by_tickers();
         this.get_account_summaries();
+        on_message(parsed as RpcMessages);
         return;
       }
 
       if (parsed.id === IDs.ReAuth) {
         this.handle_auth_message(parsed as RpcAuthMsg, true);
+        on_message(parsed as RpcMessages);
         return;
       }
 
@@ -221,11 +233,13 @@ export class DeribitClient {
         if (this.pending_subscriptions.length === 0) {
           this.ee.emit('subscribed_all');
         }
+        on_message(parsed as RpcMessages);
         return;
       }
 
       if (parsed.id?.startsWith('o/')) {
         this.handle_open_order_message(parsed as RpcOpenOrderMsg);
+        on_message(parsed as RpcMessages);
         return;
       }
 
@@ -235,6 +249,7 @@ export class DeribitClient {
           this.accounts_summary[currency] = parsed.result as AccountSummary;
           this.to_console(`Account summary for the currency ${currency} updated`);
         }
+        on_message(parsed as RpcMessages);
         return;
       }
 
@@ -243,9 +258,11 @@ export class DeribitClient {
         this.username = data.result.username;
         this.acc_type = data.result.type;
         this.to_console(`Account summaries got`);
+        on_message(parsed as RpcMessages);
+        return;
       }
 
-      on_message(parsed as RpcMessages);
+      
     };
 
     this.client.on('close', this.on_close);
@@ -373,6 +390,14 @@ export class DeribitClient {
       const currency = channel.split('.')[2].toUpperCase() as Currencies;
       this.portfolio[currency] = data as UserPortfolioByCurrency;
       this.ee.emit('portfolio_updated', currency);
+      return;
+    }
+    if (channel.startsWith('deribit_price_index')) {
+      const pair = channel.split('.')[1] as Indexes;
+      const { price } = data as BTCIndexData;
+      this.indexes[pair] = price;
+      this.ee.emit('index_updated', pair);
+      return;
     }
   };
 
@@ -426,6 +451,19 @@ export class DeribitClient {
     this.to_console(`Getting account summaries...`);
     get_account_summaries(this.client);
   };
+
+  public get_configuration = () => {
+    return {
+      api_env: this.api_env,
+      ws_api_url: this.ws_api_url,
+      client_id: this.client_id,
+      currencies: this.currencies,
+      username: this.username,
+      acc_type: this.acc_type,
+    }
+  }
+
+  public get_index = (index: Indexes) => this.indexes[index];
 
   public get_pending_subscriptions = () => this.pending_subscriptions;
 
