@@ -433,6 +433,8 @@ export class DeribitClient {
 
   public get_accounts_summary = () => this.accounts_summary;
 
+  public get_portfolio_by_currency = (currency: Currencies) => this.portfolio[currency];
+
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 
   public open_order = (params: OrderParams) => {
