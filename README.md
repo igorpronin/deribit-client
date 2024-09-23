@@ -48,10 +48,6 @@ client.ee.on('portfolio_updated') => {
 }
 ```
 
-## Contact
-
-Any questions?DM me: [@igorpronin](https://t.me/igorpronin)
-
 ## Public Methods
 
 ### get_pending_subscriptions()
@@ -98,6 +94,10 @@ Returns the instruments for the specified kind.
 
 ### get_calculated_ticker_data(instrument_name: string)
 Returns the calculated ticker data for the specified instrument.
+
+## Contact
+
+Any questions? DM me: [@igorpronin](https://t.me/igorpronin)
 
 ## License
 
