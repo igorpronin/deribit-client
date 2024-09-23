@@ -95,7 +95,7 @@ Returns the instruments for the specified kind.
 ### get_calculated_ticker_data(instrument_name: string)
 Returns the calculated ticker data for the specified instrument.
 
-## Contact
+## Contacts
 
 Any questions? DM me: [@igorpronin](https://t.me/igorpronin)
 
