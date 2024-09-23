@@ -1,4 +1,4 @@
 tools
 .idea/
-.tmp/
-.env/
+tmp/
+.env
