@@ -1,6 +1,6 @@
 {
   "name": "@igorpronin/deribit-client",
-  "version": "1.1.6",
+  "version": "1.2.0",
   "description": "Deribit client for internal purposes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,9 +9,11 @@
     "build": "tsc",
     "clear": "rm -rf ./dist",
     "dev": "nodemon ./src/index.ts",
-    "format": "prettier --write \"./src/**/*.ts\"",
+    "debug": "nodemon ./tmp/app.ts",
+    "format": "prettier --write \"./src/**/*.ts\" \"./tests/**/*.ts\"",
+    "format:tmp": "prettier --write \"./tmp/**/*.ts\"",
     "format:tools": "prettier --write \"./tools/*.js\"",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "stats": "./tools/git-daily-stats.sh",
     "watch": "node ./tools/file-watcher.js",
     "permit": "chmod +x ./tools/update-version.sh && chmod +x ./tools/git-commit.sh && chmod +x ./tools/release.sh && chmod +x ./tools/build-and-publish.sh && chmod +x ./tools/git-daily-stats.sh",
@@ -28,11 +30,15 @@
   "license": "ISC",
   "devDependencies": {
     "@types/events": "^3.0.3",
+    "@types/jest": "^29.5.13",
     "@types/node": "^20.11.26",
+    "dotenv": "^16.4.5",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.0",
     "prettier": "^3.3.3",
+    "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.2"
+    "typescript": "^5.6.2"
   },
   "dependencies": {
     "@igorpronin/utils": "^1.0.4",

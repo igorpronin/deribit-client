@@ -3,6 +3,13 @@ export enum IDs {
   ReAuth = 're_auth',
   GetOrderState = 'gos',
   AccSummaries = 'acc_summaries',
+  GetCurrencies = 'get_currencies',
+}
+
+export enum GetInstrumentIDs {
+  GetInstrumentOptions = 'get_instruments/option',
+  GetInstrumentFuture = 'get_instruments/future',
+  GetInstrumentSpot = 'get_instruments/spot',
 }
 
 export enum AccSummaryIDs {
@@ -12,17 +19,16 @@ export enum AccSummaryIDs {
   AccountSummaryUsdt = 'acc_summary/USDT',
 }
 
+// https://docs.deribit.com/#deribit_price_index-index_name
+export type PublicIndexSubscriptions = `deribit_price_index.${string}`;
+
+// https://docs.deribit.com/#ticker-instrument_name-interval
+export type PublicTickerSubscriptions = `ticker.${string}.raw`;
+
+export const PublicSubscriptionPrefix = ['deribit_price_index', 'ticker'];
+
 // https://docs.deribit.com/#subscriptions
-export enum PublicSubscriptions {
-  IndexPriceBtcUsd = 'deribit_price_index.btc_usd', // https://docs.deribit.com/#deribit_price_index-index_name
-  IndexPriceEthUsd = 'deribit_price_index.eth_usd', // https://docs.deribit.com/#deribit_price_index-index_name
-  TickerBtcPerpetual = 'ticker.BTC-PERPETUAL.raw',
-  TickerEthPerpetual = 'ticker.ETH-PERPETUAL.raw',
-  TickerBtcUsdcSpot = 'ticker.BTC_USDC.raw',
-  TickerBtcUsdtSpot = 'ticker.BTC_USDT.raw',
-  TickerEthUsdcSpot = 'ticker.ETH_USDC.raw',
-  TickerEthUsdtSpot = 'ticker.ETH_USDT.raw',
-}
+export type PublicSubscriptions = PublicIndexSubscriptions | PublicTickerSubscriptions;
 
 // https://docs.deribit.com/#subscriptions
 export enum PrivateSubscriptions {
@@ -60,7 +66,13 @@ export enum PrivateMethods {
 
 export type Methods = PublicMethods | PrivateMethods;
 
-type RpcIDs = IDs | PublicSubscriptions | PrivateSubscriptions | AccSummaryIDs | string; // open_order() has id like `o/${order_id}`;
+type RpcIDs =
+  | IDs
+  | PublicSubscriptions
+  | PrivateSubscriptions
+  | AccSummaryIDs
+  | GetInstrumentIDs
+  | `o/${string}`;
 
 export type RpcError = {
   code: number;
@@ -85,6 +97,7 @@ export enum Currencies {
   ETH = 'ETH',
   USDC = 'USDC',
   USDT = 'USDT',
+  // USD = 'USD',
 }
 
 export enum Instruments {
@@ -190,6 +203,45 @@ export interface Position {
   size: number;
   size_currency: number;
   total_profit_loss: number;
+}
+
+export interface Instrument {
+  tick_size: number;
+  tick_size_steps: number[];
+  taker_commission: number;
+  settlement_period: string;
+  settlement_currency: Currencies;
+  rfq: boolean;
+  quote_currency: Currencies;
+  price_index: Indexes;
+  min_trade_amount: number;
+  max_liquidation_commission: number;
+  max_leverage: number;
+  maker_commission: number;
+  kind: Kinds;
+  is_active: boolean;
+  instrument_name: string;
+  instrument_id: number;
+  instrument_type: string;
+  expiration_timestamp: number;
+  creation_timestamp: number;
+  counter_currency: Currencies;
+  contract_size: number;
+  block_trade_tick_size: number;
+  block_trade_min_trade_amount: 200000;
+  block_trade_commission: 0.00025;
+  base_currency: Currencies;
+}
+
+export interface CurrencyData {
+  coin_type: string;
+  currency: Currencies;
+  currency_long: string;
+  fee_precision: number;
+  min_confirmations: number;
+  min_withdrawal_fee: number;
+  withdrawal_fee: number;
+  withdrawal_priorities: any[];
 }
 
 export interface OrderParams {
@@ -416,7 +468,7 @@ export interface RpcSubscribedMsg extends RpcMsg {
 // https://docs.deribit.com/#private-buy
 // https://docs.deribit.com/#private-sell
 export interface RpcOpenOrderMsg extends RpcMsg {
-  id: string;
+  id: `o/${string}`;
   result: {
     trades: Trade[];
     order: Order;
@@ -434,6 +486,16 @@ export interface RpcAccSummariesMsg extends RpcMsg {
     username: string;
     type: string;
   };
+}
+
+export interface RpcGetInstrumentsMsg extends RpcMsg {
+  id: GetInstrumentIDs;
+  result: Instrument[];
+}
+
+export interface RpcGetCurrenciesMsg extends RpcMsg {
+  id: IDs.GetCurrencies;
+  result: CurrencyData[];
 }
 
 export type RpcMessages =

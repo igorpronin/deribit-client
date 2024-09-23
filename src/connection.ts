@@ -10,7 +10,6 @@ import {
   IDs,
   PrivateSubscriptions,
   PublicMethods,
-  PublicSubscriptions,
   RpcAuthMsg,
   RpcError,
   RpcMessages,
@@ -25,13 +24,19 @@ import {
   UserPortfolioByCurrency,
   Indexes,
   BTCIndexData,
+  GetInstrumentIDs,
+  RpcGetInstrumentsMsg,
+  Instrument,
+  Kinds,
+  RpcGetCurrenciesMsg,
+  CurrencyData,
 } from './types';
 import {
   get_account_summary,
   get_account_summaries,
   open_order,
   subscribe,
-  subscribe_to_portfolio,
+  custom_request,
 } from './actions';
 
 type AuthData = {
@@ -62,6 +67,7 @@ type Params = {
   on_error?: (error?: Error) => void;
   on_message: (message: RpcMessages) => void;
   subscriptions?: Subscriptions[];
+  output_console?: boolean;
 };
 
 type Orders = {
@@ -80,9 +86,19 @@ export class DeribitClient {
 
   public ee: EventEmitter;
 
+  // Instance is ready when all obligatory data is received
+  // and all subscriptions are active (not pending or requested)
+  //
+  // All the arrays (requested_subscriptions, obligatory_subscriptions, pending_subscriptions,
+  //obligatory_data) are used for the checks and should be empty when instance is ready
+  //
+  // Change operations are not allowed when instance is not ready
+  private is_instance_ready: boolean = false;
+
   private api_env: ApiEnv;
   private ws_api_url: string;
   private api_key: string;
+  private output_console: boolean | undefined = true;
   private client_id: string;
   private username: string | undefined;
   private acc_type: string | undefined;
@@ -102,6 +118,15 @@ export class DeribitClient {
   private obligatory_subscriptions: Subscriptions[] = [PrivateSubscriptions.ChangesAnyAny];
   private pending_subscriptions: Subscriptions[] = [];
   private active_subscriptions: Subscriptions[] = [];
+
+  private obligatory_data = [
+    GetInstrumentIDs.GetInstrumentFuture,
+    GetInstrumentIDs.GetInstrumentOptions,
+    GetInstrumentIDs.GetInstrumentSpot,
+    IDs.GetCurrencies,
+  ];
+  private obligatory_data_pending: string[] = [];
+  private obligatory_data_received: string[] = [];
 
   private orders: Orders = {
     pending_orders_amount: 0,
@@ -139,6 +164,36 @@ export class DeribitClient {
     eth_usd: null,
   };
 
+  private instruments: {
+    [key in Kinds]: {
+      list: Instrument[];
+      by_name: { [name: string]: Instrument };
+    };
+  } = {
+    spot: {
+      list: [],
+      by_name: {},
+    },
+    future: {
+      list: [],
+      by_name: {},
+    },
+    option: {
+      list: [],
+      by_name: {},
+    },
+    future_combo: {
+      list: [],
+      by_name: {},
+    },
+    option_combo: {
+      list: [],
+      by_name: {},
+    },
+  };
+
+  private deribit_currencies_list: {list: CurrencyData[]} = {list: []};
+
   constructor(params: Params) {
     const {
       api_env,
@@ -150,16 +205,18 @@ export class DeribitClient {
       on_error,
       subscriptions,
       currencies,
+      output_console,
     } = params;
     if (!api_env || !is_value_in_enum(api_env, ['prod', 'test'])) {
       throw new Error('Invalid API environment');
     }
-    
+
     if (params.instance_id) {
       this.msg_prefix = `[Deribit client (${params.instance_id})]`;
     }
     this.api_env = api_env;
     this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
+    this.output_console = output_console;
     this.currencies = currencies;
     this.api_key = api_key;
     this.client_id = client_id;
@@ -169,7 +226,9 @@ export class DeribitClient {
     }
 
     this.currencies.forEach((currency) => {
-      this.obligatory_subscriptions.push(`user.portfolio.${currency.toLowerCase()}` as Subscriptions);
+      this.obligatory_subscriptions.push(
+        `user.portfolio.${currency.toLowerCase()}` as Subscriptions,
+      );
     });
 
     this.ee = new EventEmitter();
@@ -196,8 +255,6 @@ export class DeribitClient {
     this.on_message = (message) => {
       const parsed: RpcMessages = JSON.parse(message);
 
-      // console.log(parsed);
-
       if (parsed.error) {
         this.to_console(`RPC error: ${parsed.error.message}`, parsed.error);
         return;
@@ -211,6 +268,7 @@ export class DeribitClient {
 
       if (parsed.id === IDs.Auth) {
         this.handle_auth_message(parsed as RpcAuthMsg, false);
+        this.request_obligatory_data();
         this.subscribe_on_requested_and_obligatory();
         this.init_pending_subscriptions_check();
         this.get_account_summaries_by_tickers();
@@ -225,14 +283,12 @@ export class DeribitClient {
         return;
       }
 
-      if (
-        is_value_in_enum(parsed.id, PublicSubscriptions) ||
-        is_value_in_enum(parsed.id, PrivateSubscriptions)
-      ) {
+      if (parsed.id.startsWith('s/')) {
         this.handle_subscribed_message(parsed as RpcSubscribedMsg);
         if (this.pending_subscriptions.length === 0) {
           this.ee.emit('subscribed_all');
         }
+        this.validate_if_instance_is_ready();
         on_message(parsed as RpcMessages);
         return;
       }
@@ -262,7 +318,27 @@ export class DeribitClient {
         return;
       }
 
-      
+      if (parsed.id === IDs.GetCurrencies) {
+        if ('result' in parsed) {
+          remove_elements_from_existing_array(this.obligatory_data_pending, parsed.id);
+          this.obligatory_data_received.push(parsed.id);
+        }
+        this.handle_get_currencies_message(parsed as unknown as RpcGetCurrenciesMsg);
+        this.validate_if_instance_is_ready();
+        on_message(parsed as RpcMessages);
+        return;
+      }
+
+      if (parsed.id.startsWith('get_instruments/')) {
+        if ('result' in parsed) {
+          remove_elements_from_existing_array(this.obligatory_data_pending, parsed.id);
+          this.obligatory_data_received.push(parsed.id);
+        }
+        this.handle_get_instruments_message(parsed as unknown as RpcGetInstrumentsMsg);
+        this.validate_if_instance_is_ready();
+        on_message(parsed as RpcMessages);
+        return;
+      }
     };
 
     this.client.on('close', this.on_close);
@@ -272,11 +348,26 @@ export class DeribitClient {
   }
 
   private to_console = (msg: string, error?: any) => {
-    if (!error) {
-      console.log(`${this.msg_prefix} ${msg}`);
-    } else {
+    if (error) {
       console.error(`${this.msg_prefix} ${msg}`);
       console.error(error);
+    }
+    if (!this.output_console) {
+      return;
+    }
+    if (!error) {
+      console.log(`${this.msg_prefix} ${msg}`);
+    }
+  };
+
+  private validate_if_instance_is_ready = () => {
+    const previous_state = this.is_instance_ready;
+    this.is_instance_ready =
+      this.pending_subscriptions.length === 0 &&
+      this.obligatory_data_pending.length === 0;
+    const new_state = this.is_instance_ready;
+    if (previous_state !== new_state && new_state) {
+      this.ee.emit('instance_ready');
     }
   };
 
@@ -401,6 +492,19 @@ export class DeribitClient {
     }
   };
 
+  private handle_get_instruments_message = (msg: RpcGetInstrumentsMsg) => {
+    const kind = msg.id.split('/')[1] as Kinds;
+    const { result } = msg;
+    const list = result as Instrument[];
+    this.instruments[kind as keyof typeof this.instruments].list = list;
+  };
+
+  private handle_get_currencies_message = (msg: RpcGetCurrenciesMsg) => {
+    const { result } = msg;
+    const list = result as CurrencyData[];
+    this.deribit_currencies_list.list = list;
+  };
+
   private handle_open_order_message = (msg: RpcOpenOrderMsg) => {
     const id = msg.id.split('/')[1];
     const order_data = this.orders.all[id];
@@ -452,6 +556,35 @@ export class DeribitClient {
     get_account_summaries(this.client);
   };
 
+  private request_obligatory_data = () => {
+    this.to_console(`Requesting obligatory data...`);
+    
+    this.to_console(`Requesting future instruments...`);
+    this.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentFuture);
+    custom_request(this.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentFuture, {
+      currency: 'any',
+      kind: 'future',
+    });
+    
+    this.to_console(`Requesting options instruments...`);
+    this.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentOptions);
+    custom_request(this.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentOptions, {
+      currency: 'any',
+      kind: 'option',
+    });
+
+    this.to_console(`Requesting spot instruments...`);
+    this.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentSpot);
+    custom_request(this.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentSpot, {
+      currency: 'any',
+      kind: 'spot',
+    });
+    
+    this.to_console(`Requesting currencies...`);
+    this.obligatory_data_pending.push(IDs.GetCurrencies);
+    custom_request(this.client, 'public/get_currencies', IDs.GetCurrencies, {});
+  };
+
   public get_configuration = () => {
     return {
       api_env: this.api_env,
@@ -460,8 +593,8 @@ export class DeribitClient {
       currencies: this.currencies,
       username: this.username,
       acc_type: this.acc_type,
-    }
-  }
+    };
+  };
 
   public get_index = (index: Indexes) => this.indexes[index];
 
@@ -471,11 +604,20 @@ export class DeribitClient {
 
   public get_accounts_summary = () => this.accounts_summary;
 
+  public get_obligatory_data_state = () => this.obligatory_data;
+
   public get_portfolio_by_currency = (currency: Currencies) => this.portfolio[currency];
 
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 
+  public get_instruments = (kind: Kinds) => this.instruments[kind].list;
+
+  public get_deribit_currencies_list = () => this.deribit_currencies_list.list;
+
   public open_order = (params: OrderParams) => {
+    if (!this.is_instance_ready) {
+      throw new Error('Instance is not ready');
+    }
     const id = open_order(this.client, params);
     this.orders.pending_orders_amount++;
     const order_data = {

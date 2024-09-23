@@ -38,6 +38,7 @@ const client = new DeribitClient({
 client.ee.on('authorized', () => console.log('Authorized!'));  
 client.ee.on('subscribed', (msg: any) => console.log('Subscribed!', msg));
 client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
+client.ee.on('instance_ready', () => console.log('Instance is ready!'));
 client.ee.on('portfolio_updated', (ticker: Currencies) => console.log('Portfolio updated!', ticker));
 client.ee.on('index_updated', (pair: Indexes) => console.log('Index updated!', pair));
 
@@ -72,3 +73,12 @@ Returns the current configuration of the client.
 
 ### get_index(index: Indexes)
 Returns the current index price for the specified currency pair.
+
+### get_obligatory_data_state()
+Returns the state of the obligatory data.
+
+### get_instruments(kind: Kinds)
+Returns the instruments for the specified kind.
+
+### get_deribit_currencies_list()
+Returns the list of currencies supported by Deribit.

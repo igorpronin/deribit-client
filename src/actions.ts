@@ -9,18 +9,32 @@ import {
   PublicSubscriptions,
   Subscriptions,
   OrderParams,
+  PublicSubscriptionPrefix,
 } from './types';
+import { starts_with_prefix } from './helpers';
 import { is_value_in_enum, generate_random_id } from '@igorpronin/utils';
+
+export const custom_request = (client: WebSocket, method: string, id: string, params: any) => {
+  const msg: any = {
+    jsonrpc: '2.0',
+    id,
+    method,
+    params,
+  };
+  client.send(JSON.stringify(msg));
+  return msg;
+};
 
 export const subscribe = (client: WebSocket, subscription: Subscriptions) => {
   const msg: any = {
     jsonrpc: '2.0',
-    id: subscription,
+    id: `s/${subscription}`,
     params: {
       channels: [subscription],
     },
   };
-  if (is_value_in_enum(subscription, PublicSubscriptions)) {
+
+  if (starts_with_prefix(PublicSubscriptionPrefix, subscription)) {
     msg.method = PublicMethods.PublicSubscribe;
   }
   if (is_value_in_enum(subscription, PrivateSubscriptions)) {
