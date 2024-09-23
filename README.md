@@ -10,7 +10,7 @@ Deribit client for internal purposes
 
 ## Usage
 
-```
+```javascript
 import {
   DeribitClient,
   PublicSubscriptions,
@@ -34,7 +34,7 @@ const client = new DeribitClient({
 
 ## Events
 
-```
+```javascript
 client.ee.on('authorized', () => console.log('Authorized!'));  
 client.ee.on('subscribed', (msg: any) => console.log('Subscribed!', msg));
 client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
