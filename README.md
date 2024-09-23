@@ -4,6 +4,8 @@ Deribit client for internal purposes
 
 > **Warning**: This package is currently in active development and is not recommended for production use.
 
+Contact author: [@igorpronin](https://t.me/igorpronin)
+
 ## Install
 
 ```npm i @igorpronin/deribit-client```
