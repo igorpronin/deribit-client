@@ -1,7 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
-import { DeribitClient } from '../src/connection';
+import { DeribitClient } from '../src/index';
 
 describe('DeribitClient', () => {
   it('should be defined', () => {

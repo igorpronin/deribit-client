@@ -43,7 +43,7 @@ client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
 client.ee.on('instance_ready', () => console.log('Instance is ready!'));
 client.ee.on('portfolio_updated', (ticker: Currencies) => console.log('Portfolio updated!', ticker));
 client.ee.on('index_updated', (pair: Indexes) => console.log('Index updated!', pair));
-
+client.ee.on('ticker_updated', (instrument_name: string) => console.log('Ticker updated!', instrument_name));
 client.ee.on('portfolio_updated') => {
   const acc_summary = client.get_accounts_summary();
   console.log(acc_summary);
@@ -84,3 +84,16 @@ Returns the instruments for the specified kind.
 
 ### get_deribit_currencies_list()
 Returns the list of currencies supported by Deribit.
+
+### get_raw_ticker_data(instrument_name: string)
+Returns the raw ticker data for the specified instrument.
+
+### get_deribit_instrument_by_name(instrument_name: string)
+Returns the instrument for the specified kind and name.
+
+### get_deribit_instruments(kind: Kinds)
+Returns the instruments for the specified kind.
+
+### get_calculated_ticker_data(instrument_name: string)
+Returns the calculated ticker data for the specified instrument.
+

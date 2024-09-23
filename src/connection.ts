@@ -30,6 +30,7 @@ import {
   Kinds,
   RpcGetCurrenciesMsg,
   CurrencyData,
+  TickerData,
 } from './types';
 import {
   get_account_summary,
@@ -38,6 +39,7 @@ import {
   subscribe,
   custom_request,
 } from './actions';
+import { calculate_future_apr_and_premium } from './helpers';
 
 type AuthData = {
   state: boolean;
@@ -164,35 +166,31 @@ export class DeribitClient {
     eth_usd: null,
   };
 
-  private instruments: {
-    [key in Kinds]: {
-      list: Instrument[];
-      by_name: { [name: string]: Instrument };
-    };
+  private deribit_instruments_list: {
+    [key in Kinds]: Instrument[];
   } = {
-    spot: {
-      list: [],
-      by_name: {},
-    },
-    future: {
-      list: [],
-      by_name: {},
-    },
-    option: {
-      list: [],
-      by_name: {},
-    },
-    future_combo: {
-      list: [],
-      by_name: {},
-    },
-    option_combo: {
-      list: [],
-      by_name: {},
-    },
+    spot: [],
+    future: [],
+    option: [],
+    future_combo: [],
+    option_combo: [],
   };
 
-  private deribit_currencies_list: {list: CurrencyData[]} = {list: []};
+  private deribit_instruments_by_name: { [key: string]: Instrument } = {};
+
+  private ticker_data: {
+    [key: string]: {
+      raw: TickerData;
+      calculated: {
+        time_to_expiration_in_minutes: number | null;
+        apr: number | null;
+        premium_absolute: number | null;
+        premium_relative: number | null;
+      };
+    };
+  } = {};
+
+  private deribit_currencies_list: { list: CurrencyData[] } = { list: [] };
 
   constructor(params: Params) {
     const {
@@ -363,8 +361,7 @@ export class DeribitClient {
   private validate_if_instance_is_ready = () => {
     const previous_state = this.is_instance_ready;
     this.is_instance_ready =
-      this.pending_subscriptions.length === 0 &&
-      this.obligatory_data_pending.length === 0;
+      this.pending_subscriptions.length === 0 && this.obligatory_data_pending.length === 0;
     const new_state = this.is_instance_ready;
     if (previous_state !== new_state && new_state) {
       this.ee.emit('instance_ready');
@@ -434,10 +431,10 @@ export class DeribitClient {
       err_msg = 'Error during re-auth';
     }
     if (msg.error) {
+      this.auth_data.state = false;
       this.handle_rpc_error(err_msg, true, msg.error);
     }
     if (msg.result) {
-      this.to_console(success_msg);
       this.auth_data.refresh_token = msg.result.refresh_token;
       this.auth_data.access_token = msg.result.access_token;
       this.auth_data.expires_in = msg.result.expires_in;
@@ -447,6 +444,8 @@ export class DeribitClient {
         this.authorized_at = new Date();
         this.ee.emit('authorized');
       }
+      this.auth_data.state = true;
+      this.to_console(success_msg);
     }
   };
 
@@ -490,13 +489,40 @@ export class DeribitClient {
       this.ee.emit('index_updated', pair);
       return;
     }
+    if (channel.startsWith('ticker')) {
+      const instrument_name = channel.split('.')[1];
+      if (!this.ticker_data[instrument_name]) {
+        this.ticker_data[instrument_name] = {
+          raw: data as TickerData,
+          calculated: {
+            time_to_expiration_in_minutes: null,
+            apr: null,
+            premium_absolute: null,
+            premium_relative: null,
+          },
+        };
+      }
+      this.ticker_data[instrument_name].raw = data as TickerData;
+      this.ticker_data[instrument_name].calculated = calculate_future_apr_and_premium({
+        index_price: this.ticker_data[instrument_name].raw.index_price,
+        mark_price: this.ticker_data[instrument_name].raw.mark_price,
+        timestamp: this.ticker_data[instrument_name].raw.timestamp,
+        expiration_timestamp:
+          this.deribit_instruments_by_name[instrument_name].expiration_timestamp,
+      });
+      this.ee.emit('ticker_updated', instrument_name);
+      return;
+    }
   };
 
   private handle_get_instruments_message = (msg: RpcGetInstrumentsMsg) => {
     const kind = msg.id.split('/')[1] as Kinds;
     const { result } = msg;
     const list = result as Instrument[];
-    this.instruments[kind as keyof typeof this.instruments].list = list;
+    this.deribit_instruments_list[kind as keyof typeof this.deribit_instruments_list] = list;
+    list.forEach((instrument) => {
+      this.deribit_instruments_by_name[instrument.instrument_name] = instrument;
+    });
   };
 
   private handle_get_currencies_message = (msg: RpcGetCurrenciesMsg) => {
@@ -532,6 +558,9 @@ export class DeribitClient {
   };
 
   private subscribe_on_requested_and_obligatory = () => {
+    if (!this.auth_data.state) {
+      throw new Error('Not authorized');
+    }
     this.requested_subscriptions.forEach((subscription) => {
       this.to_console(`Subscribing on ${subscription}...`);
       subscribe(this.client, subscription);
@@ -545,6 +574,9 @@ export class DeribitClient {
   };
 
   private get_account_summaries_by_tickers = () => {
+    if (!this.auth_data.state) {
+      throw new Error('Not authorized');
+    }
     this.currencies.forEach((currency) => {
       this.to_console(`Getting account summary for currency ${currency}...`);
       get_account_summary(this.client, currency);
@@ -552,20 +584,23 @@ export class DeribitClient {
   };
 
   private get_account_summaries = () => {
+    if (!this.auth_data.state) {
+      throw new Error('Not authorized');
+    }
     this.to_console(`Getting account summaries...`);
     get_account_summaries(this.client);
   };
 
   private request_obligatory_data = () => {
     this.to_console(`Requesting obligatory data...`);
-    
+
     this.to_console(`Requesting future instruments...`);
     this.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentFuture);
     custom_request(this.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentFuture, {
       currency: 'any',
       kind: 'future',
     });
-    
+
     this.to_console(`Requesting options instruments...`);
     this.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentOptions);
     custom_request(this.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentOptions, {
@@ -579,7 +614,7 @@ export class DeribitClient {
       currency: 'any',
       kind: 'spot',
     });
-    
+
     this.to_console(`Requesting currencies...`);
     this.obligatory_data_pending.push(IDs.GetCurrencies);
     custom_request(this.client, 'public/get_currencies', IDs.GetCurrencies, {});
@@ -610,11 +645,22 @@ export class DeribitClient {
 
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 
-  public get_instruments = (kind: Kinds) => this.instruments[kind].list;
+  public get_deribit_instruments = (kind: Kinds) => this.deribit_instruments_list[kind];
+
+  public get_deribit_instrument_by_name = (instrument_name: string) =>
+    this.deribit_instruments_by_name[instrument_name];
 
   public get_deribit_currencies_list = () => this.deribit_currencies_list.list;
 
+  public get_raw_ticker_data = (instrument_name: string) => this.ticker_data[instrument_name]?.raw;
+
+  public get_calculated_ticker_data = (instrument_name: string) =>
+    this.ticker_data[instrument_name]?.calculated;
+
   public open_order = (params: OrderParams) => {
+    if (!this.auth_data.state) {
+      throw new Error('Not authorized');
+    }
     if (!this.is_instance_ready) {
       throw new Error('Instance is not ready');
     }

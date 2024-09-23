@@ -278,6 +278,34 @@ export interface BTCIndexData {
   timestamp: number;
 }
 
+export interface TickerData {
+  timestamp: number;
+  stats: {
+    volume_usd: number;
+    volume: number;
+    price_change: number;
+    low: number;
+    high: number;
+  };
+  state: string;
+  settlement_price: number;
+  open_interest: number;
+  min_price: number;
+  max_price: number;
+  mark_price: number;
+  last_price: number;
+  interest_value: number;
+  instrument_name: string;
+  index_price: number;
+  funding_8h: number;
+  estimated_delivery_price: number;
+  current_funding: number;
+  best_bid_price: number;
+  best_bid_amount: number;
+  best_ask_price: number;
+  best_ask_amount: number;
+}
+
 export interface PerpetualTickerData {
   timestamp: number;
   stats: {
