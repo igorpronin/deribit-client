@@ -7,6 +7,9 @@ error.log
 package-lock.json # if you're not intending to share this lockfile
 yarn.lock # similar to above, if you're not sharing it
 
+# package-lock.json
+package-lock.json
+
 # Environment variables (Security!)
 .env
 

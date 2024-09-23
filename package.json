@@ -27,7 +27,7 @@
   },
   "keywords": [],
   "author": "legalsolut@gmail.com",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@types/events": "^3.0.3",
     "@types/jest": "^29.5.13",
