@@ -1,3 +1,3 @@
-export { DeribitClient } from './connection';
+export { DeribitClient } from './DeribitClient';
 
 export * from './types';

@@ -4,6 +4,7 @@ export enum IDs {
   GetOrderState = 'gos',
   AccSummaries = 'acc_summaries',
   GetCurrencies = 'get_currencies',
+  GetPositions = 'get_positions',
 }
 
 export enum GetInstrumentIDs {
@@ -62,6 +63,7 @@ export enum PrivateMethods {
   AccountSummaries = 'private/get_account_summaries',
   PrivateSubscribe = 'private/subscribe',
   GetOrderState = 'private/get_order_state',
+  GetPositions = 'private/get_positions',
 }
 
 export type Methods = PublicMethods | PrivateMethods;
@@ -511,6 +513,7 @@ export interface RpcAccSummaryMsg extends RpcMsg {
 export interface RpcAccSummariesMsg extends RpcMsg {
   id: IDs.AccSummaries;
   result: {
+    id: number;
     username: string;
     type: string;
   };
@@ -524,6 +527,11 @@ export interface RpcGetInstrumentsMsg extends RpcMsg {
 export interface RpcGetCurrenciesMsg extends RpcMsg {
   id: IDs.GetCurrencies;
   result: CurrencyData[];
+}
+
+export interface RpcGetPositionsMsg extends RpcMsg {
+  id: IDs.GetPositions;
+  result: Position[];
 }
 
 export type RpcMessages =

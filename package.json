@@ -16,7 +16,7 @@
     "test": "jest --verbose",
     "stats": "./tools/git-daily-stats.sh",
     "watch": "node ./tools/file-watcher.js",
-    "permit": "chmod +x ./tools/update-version.sh && chmod +x ./tools/git-commit.sh && chmod +x ./tools/release.sh && chmod +x ./tools/build-and-publish.sh && chmod +x ./tools/git-daily-stats.sh",
+    "permit": "chmod +x ./tools/*.sh",
     "git": "./tools/git-commit.sh",
     "release:patch": "npm run clear && ./tools/release.sh patch",
     "release:minor": "npm run clear && ./tools/release.sh minor"

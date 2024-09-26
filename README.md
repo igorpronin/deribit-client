@@ -40,6 +40,7 @@ client.ee.on('subscribed', (msg: any) => console.log('Subscribed!', msg));
 client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
 client.ee.on('instance_ready', () => console.log('Instance is ready!'));
 client.ee.on('portfolio_updated', (ticker: Currencies) => console.log('Portfolio updated!', ticker));
+client.ee.on('position_updated', (instrument_name: string) => console.log('Position updated!', instrument_name));
 client.ee.on('index_updated', (pair: Indexes) => console.log('Index updated!', pair));
 client.ee.on('ticker_updated', (instrument_name: string) => console.log('Ticker updated!', instrument_name));
 client.ee.on('portfolio_updated') => {
@@ -94,6 +95,12 @@ Returns the instruments for the specified kind.
 
 #### get_calculated_ticker_data(instrument_name: string)
 Returns the calculated ticker data for the specified instrument.
+
+#### get_positions()
+Returns the positions for the specified currency.
+
+#### get_position_by_instrument_name(instrument_name: string)
+Returns the position for the specified instrument.
 
 ## Contacts
 

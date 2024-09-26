@@ -25,7 +25,7 @@ export const custom_request = (client: WebSocket, method: string, id: string, pa
   return msg;
 };
 
-export const subscribe = (client: WebSocket, subscription: Subscriptions) => {
+export const request_subscribe = (client: WebSocket, subscription: Subscriptions) => {
   const msg: any = {
     jsonrpc: '2.0',
     id: `s/${subscription}`,
@@ -44,15 +44,15 @@ export const subscribe = (client: WebSocket, subscription: Subscriptions) => {
   return subscription;
 };
 
-export const subscribe_to_portfolio = (client: WebSocket, currencies: Currencies[]) => {
+export const requests_subscribe_to_portfolio = (client: WebSocket, currencies: Currencies[]) => {
   currencies.forEach((currency) => {
-    subscribe(client, `user.portfolio.${currency}` as Subscriptions);
+    request_subscribe(client, `user.portfolio.${currency}` as Subscriptions);
   });
 };
 
 // https://docs.deribit.com/#private-get_account_summary
 // To read subaccount summary use subaccount_id parameter (not implemented yet)
-export const get_account_summary = (client: WebSocket, currency: Currencies) => {
+export const request_get_account_summary = (client: WebSocket, currency: Currencies) => {
   const msg: any = {
     jsonrpc: '2.0',
     method: PrivateMethods.AccountSummary,
@@ -81,7 +81,7 @@ export const get_account_summary = (client: WebSocket, currency: Currencies) => 
 };
 
 // https://docs.deribit.com/#private-get_account_summaries
-export const get_account_summaries = (client: WebSocket) => {
+export const request_get_account_summaries = (client: WebSocket) => {
   const msg: any = {
     jsonrpc: '2.0',
     id: IDs.AccSummaries,
@@ -93,8 +93,19 @@ export const get_account_summaries = (client: WebSocket) => {
   client.send(JSON.stringify(msg));
 };
 
+// https://docs.deribit.com/#private-get_positions
+export const request_get_positions = (client: WebSocket) => {
+  const msg: any = {
+    jsonrpc: '2.0',
+    id: IDs.GetPositions,
+    method: PrivateMethods.GetPositions,
+    params: { currency: 'any' },
+  };
+  client.send(JSON.stringify(msg));
+};
+
 // https://docs.deribit.com/#private-get_order_state
-export const get_order_state_by_id = (client: WebSocket, order_id: string) => {
+export const request_get_order_state_by_id = (client: WebSocket, order_id: string) => {
   const msg: any = {
     jsonrpc: '2.0',
     id: IDs.GetOrderState,
@@ -106,7 +117,7 @@ export const get_order_state_by_id = (client: WebSocket, order_id: string) => {
 
 // https://docs.deribit.com/#private-buy
 // https://docs.deribit.com/#private-sell
-export const open_order = (
+export const request_open_order = (
   client: WebSocket,
   { direction, amount, type, price, instrument_name, time_in_force }: OrderParams,
 ): string => {

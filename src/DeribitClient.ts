@@ -31,12 +31,15 @@ import {
   RpcGetCurrenciesMsg,
   CurrencyData,
   TickerData,
+  RpcGetPositionsMsg,
+  Position,
 } from './types';
 import {
-  get_account_summary,
-  get_account_summaries,
-  open_order,
-  subscribe,
+  request_get_account_summary,
+  request_get_account_summaries,
+  request_get_positions,
+  request_open_order,
+  request_subscribe,
   custom_request,
 } from './actions';
 import { calculate_future_apr_and_premium } from './helpers';
@@ -72,6 +75,18 @@ type Params = {
   output_console?: boolean;
 };
 
+type TickerFullData = {
+  raw: TickerData;
+  calculated: {
+    time_to_expiration_in_minutes: number | null;
+    apr: number | null;
+    premium_absolute: number | null;
+    premium_relative: number | null;
+  };
+};
+
+type CurrenciesData = { list: CurrencyData[] };
+
 type Orders = {
   pending_orders_amount: number;
   all: { [id: string]: OrderData };
@@ -99,11 +114,12 @@ export class DeribitClient {
 
   private api_env: ApiEnv;
   private ws_api_url: string;
-  private api_key: string;
+  private api_key: string; // API key
+  private client_id: string; // API key ID
   private output_console: boolean | undefined = true;
-  private client_id: string;
   private username: string | undefined;
   private acc_type: string | undefined;
+  private user_id: number | undefined;
   private currencies: Currencies[];
   private on_open: () => void;
   private on_close: () => void;
@@ -126,6 +142,7 @@ export class DeribitClient {
     GetInstrumentIDs.GetInstrumentOptions,
     GetInstrumentIDs.GetInstrumentSpot,
     IDs.GetCurrencies,
+    IDs.GetPositions,
   ];
   private obligatory_data_pending: string[] = [];
   private obligatory_data_received: string[] = [];
@@ -161,6 +178,8 @@ export class DeribitClient {
     USDT: null,
   };
 
+  private positions: Record<string, Position> = {};
+
   private indexes: { [key in Indexes]: number | null } = {
     btc_usd: null,
     eth_usd: null,
@@ -176,21 +195,11 @@ export class DeribitClient {
     option_combo: [],
   };
 
-  private deribit_instruments_by_name: { [key: string]: Instrument } = {};
+  private deribit_instruments_by_name: Record<string, Instrument> = {};
 
-  private ticker_data: {
-    [key: string]: {
-      raw: TickerData;
-      calculated: {
-        time_to_expiration_in_minutes: number | null;
-        apr: number | null;
-        premium_absolute: number | null;
-        premium_relative: number | null;
-      };
-    };
-  } = {};
+  private ticker_data: Record<string, TickerFullData> = {};
 
-  private deribit_currencies_list: { list: CurrencyData[] } = { list: [] };
+  private deribit_currencies_list: CurrenciesData = { list: [] };
 
   constructor(params: Params) {
     const {
@@ -266,11 +275,11 @@ export class DeribitClient {
 
       if (parsed.id === IDs.Auth) {
         this.handle_auth_message(parsed as RpcAuthMsg, false);
-        this.request_obligatory_data();
-        this.subscribe_on_requested_and_obligatory();
+        this.process_request_obligatory_data();
+        this.process_subscribe_on_requested_and_obligatory();
+        this.process_get_account_summaries_by_tickers();
+        this.process_get_account_summaries();
         this.init_pending_subscriptions_check();
-        this.get_account_summaries_by_tickers();
-        this.get_account_summaries();
         on_message(parsed as RpcMessages);
         return;
       }
@@ -311,6 +320,7 @@ export class DeribitClient {
         const data = parsed as RpcAccSummariesMsg;
         this.username = data.result.username;
         this.acc_type = data.result.type;
+        this.user_id = data.result.id;
         this.to_console(`Account summaries got`);
         on_message(parsed as RpcMessages);
         return;
@@ -322,6 +332,17 @@ export class DeribitClient {
           this.obligatory_data_received.push(parsed.id);
         }
         this.handle_get_currencies_message(parsed as unknown as RpcGetCurrenciesMsg);
+        this.validate_if_instance_is_ready();
+        on_message(parsed as RpcMessages);
+        return;
+      }
+
+      if (parsed.id === IDs.GetPositions) {
+        if ('result' in parsed) {
+          remove_elements_from_existing_array(this.obligatory_data_pending, parsed.id);
+          this.obligatory_data_received.push(parsed.id);
+        }
+        this.handle_get_positions_message(parsed as unknown as RpcGetPositionsMsg);
         this.validate_if_instance_is_ready();
         on_message(parsed as RpcMessages);
         return;
@@ -412,6 +433,18 @@ export class DeribitClient {
     this.client.send(JSON.stringify(msg));
   };
 
+  private init_pending_subscriptions_check = () => {
+    setTimeout(() => {
+      if (this.pending_subscriptions.length) {
+        let m = 'WARNING! Pending subscriptions still exist';
+        this.pending_subscriptions.forEach((s) => {
+          m += `\n   ${s}`;
+        });
+        this.to_console(m);
+      }
+    }, this.subscriptions_check_time * 1000);
+  };
+
   private handle_rpc_error = (msg: string, is_critical: boolean, error: RpcError) => {
     const { code, message } = error;
     const m = `${msg} (message: ${message}, code: ${code})`;
@@ -447,18 +480,6 @@ export class DeribitClient {
       this.auth_data.state = true;
       this.to_console(success_msg);
     }
-  };
-
-  private init_pending_subscriptions_check = () => {
-    setTimeout(() => {
-      if (this.pending_subscriptions.length) {
-        let m = 'WARNING! Pending subscriptions still exist';
-        this.pending_subscriptions.forEach((s) => {
-          m += `\n   ${s}`;
-        });
-        this.to_console(m);
-      }
-    }, this.subscriptions_check_time * 1000);
   };
 
   private handle_subscribed_message = (msg: RpcSubscribedMsg) => {
@@ -513,6 +534,14 @@ export class DeribitClient {
       this.ee.emit('ticker_updated', instrument_name);
       return;
     }
+    if (channel.startsWith('user.changes')) {
+      const parts = channel.split('.');
+      // console.log(parts);
+      // console.log(data);
+      // this.portfolio[currency] = data as UserPortfolioByCurrency;
+      // this.ee.emit('portfolio_updated', currency);
+      return;
+    }
   };
 
   private handle_get_instruments_message = (msg: RpcGetInstrumentsMsg) => {
@@ -529,6 +558,14 @@ export class DeribitClient {
     const { result } = msg;
     const list = result as CurrencyData[];
     this.deribit_currencies_list.list = list;
+  };
+
+  private handle_get_positions_message = (msg: RpcGetPositionsMsg) => {
+    const { result } = msg;
+    result.forEach((position) => {
+      this.positions[position.instrument_name] = position;
+      this.ee.emit('position_updated', position.instrument_name);
+    });
   };
 
   private handle_open_order_message = (msg: RpcOpenOrderMsg) => {
@@ -557,41 +594,49 @@ export class DeribitClient {
     }
   };
 
-  private subscribe_on_requested_and_obligatory = () => {
+  private process_subscribe_on_requested_and_obligatory = () => {
     if (!this.auth_data.state) {
       throw new Error('Not authorized');
     }
     this.requested_subscriptions.forEach((subscription) => {
       this.to_console(`Subscribing on ${subscription}...`);
-      subscribe(this.client, subscription);
+      request_subscribe(this.client, subscription);
       this.pending_subscriptions.push(subscription);
     });
     this.obligatory_subscriptions.forEach((subscription) => {
       this.to_console(`Subscribing on ${subscription}...`);
-      subscribe(this.client, subscription);
+      request_subscribe(this.client, subscription);
       this.pending_subscriptions.push(subscription);
     });
   };
 
-  private get_account_summaries_by_tickers = () => {
+  private process_get_positions = () => {
+    if (!this.auth_data.state) {
+      throw new Error('Not authorized');
+    }
+    this.to_console(`Requesting positions...`);
+    request_get_positions(this.client);
+  };
+
+  private process_get_account_summaries_by_tickers = () => {
     if (!this.auth_data.state) {
       throw new Error('Not authorized');
     }
     this.currencies.forEach((currency) => {
       this.to_console(`Getting account summary for currency ${currency}...`);
-      get_account_summary(this.client, currency);
+      request_get_account_summary(this.client, currency);
     });
   };
 
-  private get_account_summaries = () => {
+  private process_get_account_summaries = () => {
     if (!this.auth_data.state) {
       throw new Error('Not authorized');
     }
     this.to_console(`Getting account summaries...`);
-    get_account_summaries(this.client);
+    request_get_account_summaries(this.client);
   };
 
-  private request_obligatory_data = () => {
+  private process_request_obligatory_data = () => {
     this.to_console(`Requesting obligatory data...`);
 
     this.to_console(`Requesting future instruments...`);
@@ -618,6 +663,9 @@ export class DeribitClient {
     this.to_console(`Requesting currencies...`);
     this.obligatory_data_pending.push(IDs.GetCurrencies);
     custom_request(this.client, 'public/get_currencies', IDs.GetCurrencies, {});
+
+    this.obligatory_data_pending.push(IDs.GetPositions);
+    this.process_get_positions();
   };
 
   public get_configuration = () => {
@@ -628,6 +676,8 @@ export class DeribitClient {
       currencies: this.currencies,
       username: this.username,
       acc_type: this.acc_type,
+      user_id: this.user_id,
+      is_instance_ready: this.is_instance_ready,
     };
   };
 
@@ -664,7 +714,7 @@ export class DeribitClient {
     if (!this.is_instance_ready) {
       throw new Error('Instance is not ready');
     }
-    const id = open_order(this.client, params);
+    const id = request_open_order(this.client, params);
     this.orders.pending_orders_amount++;
     const order_data = {
       initial: params,
@@ -676,4 +726,8 @@ export class DeribitClient {
     this.orders.all[id] = order_data;
     this.orders.list.push(order_data);
   };
+
+  public get_positions = () => this.positions;
+
+  public get_position_by_instrument_name = (instrument_name: string) => this.positions[instrument_name];
 }
