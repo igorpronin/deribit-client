@@ -107,9 +107,9 @@ export class DeribitClient {
   // and all subscriptions are active (not pending or requested)
   //
   // All the arrays (requested_subscriptions, obligatory_subscriptions, pending_subscriptions,
-  //obligatory_data) are used for the checks and should be empty when instance is ready
+  // obligatory_data) are used for the checks and should be empty when instance is ready
   //
-  // Change operations are not allowed when instance is not ready
+  // Trade operations are not allowed when instance is not ready
   private is_instance_ready: boolean = false;
 
   private api_env: ApiEnv;
