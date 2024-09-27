@@ -374,6 +374,7 @@ export class DeribitClient {
     this.client.on('error', this.on_error);
   }
 
+  // Getters
   public get_configuration = () => {
     return {
       api_env: this.api_env,
@@ -399,8 +400,6 @@ export class DeribitClient {
 
   public get_portfolio_by_currency = (currency: Currencies) => this.portfolio[currency];
 
-  public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
-
   public get_deribit_instruments = (kind: Kinds) => this.deribit_instruments_list[kind];
 
   public get_deribit_instrument_by_name = (instrument_name: string) =>
@@ -417,4 +416,6 @@ export class DeribitClient {
 
   public get_position_by_instrument_name = (instrument_name: string) =>
     this.positions[instrument_name];
+
+  public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 }
