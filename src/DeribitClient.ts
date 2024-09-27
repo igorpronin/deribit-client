@@ -51,7 +51,7 @@ import {
   request_open_order,
   request_subscribe,
   custom_request,
-} from './actions';
+} from './rpc_requests';
 import {
   create_handle_rpc_error_response,
   create_handle_rpc_subscription_message,

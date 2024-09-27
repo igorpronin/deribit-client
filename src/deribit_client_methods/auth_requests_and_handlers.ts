@@ -1,5 +1,5 @@
 import { IDs, PublicMethods, RpcAuthMsg } from '../types';
-import { custom_request } from '../actions';
+import { custom_request } from '../rpc_requests';
 
 export function create_auth(context: any) {
   return () => {
