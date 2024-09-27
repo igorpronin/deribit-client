@@ -2,16 +2,15 @@ export const starts_with_prefix = (array: string[], variable: string): boolean =
   return array.some((prefix) => variable.startsWith(prefix));
 };
 
+// The annualized premium of the Future over the Index price,
+// for informational purposes (cf. to an interest rate),
+// calculated as: %(mid Future price / Index price - 1) * 525600 / min. till expiration.
 type Params = {
   index_price: number;
   mark_price: number;
   timestamp: number;
   expiration_timestamp: number;
 };
-
-// The annualized premium of the Future over the Index price,
-// for informational purposes (cf. to an interest rate),
-// calculated as: %(mid Future price / Index price - 1) * 525600 / min. till expiration.
 export const calculate_future_apr_and_premium = (params: Params) => {
   const { index_price, mark_price, timestamp, expiration_timestamp } = params;
 
