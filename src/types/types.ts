@@ -21,38 +21,27 @@ export enum IDs {
 
 export type GetInstrumentID = `get_instruments/${Kinds}`;
 
-export enum AccSummaryIDs {
-  AccountSummaryBtc = 'acc_summary/BTC',
-  AccountSummaryEth = 'acc_summary/ETH',
-  AccountSummaryUsdc = 'acc_summary/USDC',
-  AccountSummaryUsdt = 'acc_summary/USDT',
-}
+export type AccSummaryID = `acc_summary/${Currencies}`;
 
 // https://docs.deribit.com/#deribit_price_index-index_name
-export type PublicIndexSubscriptions = `deribit_price_index.${string}`;
+export type PublicIndexSubscription = `deribit_price_index.${string}`;
 
 // https://docs.deribit.com/#ticker-instrument_name-interval
-export type PublicTickerSubscriptions = `ticker.${string}.raw`;
-
-export const PublicSubscriptionPrefix = ['deribit_price_index', 'ticker'];
+export type PublicTickerSubscription = `ticker.${string}.raw`;
 
 // https://docs.deribit.com/#subscriptions
-export type PublicSubscriptions = PublicIndexSubscriptions | PublicTickerSubscriptions;
+export type PublicSubscription = PublicIndexSubscription | PublicTickerSubscription;
 
 // https://docs.deribit.com/#subscriptions
-export enum PrivateSubscriptions {
-  PortfolioBtc = 'user.portfolio.btc',
-  PortfolioEth = 'user.portfolio.eth',
-  PortfolioUsdc = 'user.portfolio.usdc',
-  PortfolioUsdt = 'user.portfolio.usdt',
-  OrdersAnyAny = 'user.orders.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-orders-kind-currency-raw
-  ChangesAnyAny = 'user.changes.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-changes-kind-currency-interval
-  ChangesFutureAny = 'user.changes.future.any.raw',
-  ChangesOptionAny = 'user.changes.option.any.raw',
-  ChangesSpotAny = 'user.changes.spot.any.raw',
-}
+export type PrivateSubscription = `user.portfolio.${CurrenciesLowerCase}`;
 
-export type Subscriptions = PublicSubscriptions | PrivateSubscriptions;
+// OrdersAnyAny = 'user.orders.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-orders-kind-currency-raw
+// ChangesAnyAny = 'user.changes.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-changes-kind-currency-interval
+// ChangesFutureAny = 'user.changes.future.any.raw',
+// ChangesOptionAny = 'user.changes.option.any.raw',
+// ChangesSpotAny = 'user.changes.spot.any.raw',
+
+export type Subscriptions = PublicSubscription | PrivateSubscription;
 
 export enum PublicMethods {
   Auth = 'public/auth',
@@ -72,26 +61,29 @@ export enum PrivateMethods {
 
 export type Methods = PublicMethods | PrivateMethods;
 
-type RpcIDs =
-  | IDs
-  | PublicSubscriptions
-  | PrivateSubscriptions
-  | AccSummaryIDs
-  | GetInstrumentID
-  | `o/${string}`;
+export type Currencies =
+  | 'ETHW'
+  | 'STETH'
+  | 'MATIC'
+  | 'XRP'
+  | 'EURR'
+  | 'SOL'
+  | 'USDT'
+  | 'USDC'
+  | 'ETH'
+  | 'BTC';
 
-export enum Currencies {
-  BTC = 'BTC',
-  ETH = 'ETH',
-  USDC = 'USDC',
-  USDT = 'USDT',
-  // USD = 'USD',
-}
-
-export enum Instruments {
-  BTC_PERPETUAL = 'BTC-PERPETUAL',
-  ETH_PERPETUAL = 'ETH-PERPETUAL',
-}
+export type CurrenciesLowerCase =
+  | 'ethw'
+  | 'steth'
+  | 'matic'
+  | 'xrp'
+  | 'eurr'
+  | 'sol'
+  | 'usdt'
+  | 'usdc'
+  | 'eth'
+  | 'btc';
 
 export type Kinds = 'future' | 'option' | 'spot' | 'future_combo' | 'option_combo';
 
@@ -114,13 +106,10 @@ export type OrderStates =
   | 'rejected' // Deribit state
   | 'cancelled'; // Deribit state
 
-export enum OrderDirections {
-  buy = 'buy',
-  sell = 'sell',
-}
+export type OrderDirections = 'buy' | 'sell';
 
 export interface OrderParams {
-  instrument_name: Instruments;
+  instrument_name: string;
   amount: number;
   type: OrderType;
   price?: number;
@@ -137,9 +126,11 @@ export interface OrderData {
   state: null | OrderStates;
 }
 
+export type SubscriptionData = BTCIndexData | UserChanges | UserPortfolioByCurrency;
+
 export interface SubscriptionParams {
   channel: Subscriptions;
-  data: BTCIndexData | UserChanges | UserPortfolioByCurrency;
+  data: SubscriptionData;
 }
 
 export interface DeribitSubscription {
@@ -155,7 +146,7 @@ export interface BTCIndexData {
 
 // https://docs.deribit.com/#user-changes-kind-currency-interval
 export interface UserChanges {
-  instrument_name: Instruments;
+  instrument_name: string;
   trades: Trade[];
   positions: Position[];
   orders: Order[];
@@ -188,7 +179,7 @@ export interface RpcOpenOrderMsg extends RpcSuccessResponse {
 }
 
 export interface RpcAccSummaryMsg extends RpcSuccessResponse {
-  id: AccSummaryIDs;
+  id: AccSummaryID;
   result: AccountSummary;
 }
 

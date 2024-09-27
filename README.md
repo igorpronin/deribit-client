@@ -81,11 +81,17 @@ Returns the instruments for the specified kind.
 #### get_deribit_currencies_list()
 Returns the list of currencies supported by Deribit.
 
+#### get_ticker_data(instrument_name: string)
+Returns the ticker data for the specified instrument.
+
 #### get_raw_ticker_data(instrument_name: string)
 Returns the raw ticker data for the specified instrument.
 
 #### get_deribit_instrument_by_name(instrument_name: string)
 Returns the instrument for the specified kind and name.
+
+#### get_calculated_ticker_data(instrument_name: string)
+Returns the calculated ticker data for the specified instrument.
 
 #### get_deribit_instruments(kind: Kinds)
 Returns the instruments for the specified kind.

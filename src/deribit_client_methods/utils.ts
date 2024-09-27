@@ -30,21 +30,29 @@ export function handle_refresh_counter(context: DeribitClient) {
   }
 }
 
-export function validate_if_instance_is_ready(context: DeribitClient) {
-  const previous_state = context.is_instance_ready;
-  context.is_instance_ready =
-    context.pending_subscriptions.length === 0 && context.obligatory_data_pending.length === 0;
-  const new_state = context.is_instance_ready;
-  if (previous_state !== new_state && new_state) {
-    context.ee.emit('instance_ready');
-  }
+export function is_instruments_list_ready(context: DeribitClient) {
+  return (
+    context.obligatory_data_received.includes('get_instruments/future') &&
+    context.obligatory_data_received.includes('get_instruments/option') &&
+    context.obligatory_data_received.includes('get_instruments/spot')
+  );
 }
+
+// export function validate_if_instance_is_ready(context: DeribitClient) {
+//   const previous_state = context.is_instance_ready;
+//   context.is_instance_ready =
+//     context.subscriptions_pending.length === 0 && context.obligatory_data_pending.length === 0;
+//   const new_state = context.is_instance_ready;
+//   if (previous_state !== new_state && new_state) {
+//     context.ee.emit('instance_ready');
+//   }
+// }
 
 export function init_pending_subscriptions_check(context: DeribitClient) {
   setTimeout(() => {
-    if (context.pending_subscriptions.length) {
+    if (context.subscriptions_pending.length) {
       let m = 'WARNING! Pending subscriptions still exist';
-      context.pending_subscriptions.forEach((s: string) => {
+      context.subscriptions_pending.forEach((s: string) => {
         m += `\n   ${s}`;
       });
       to_console(context, m);
@@ -56,5 +64,17 @@ export function hadle_opligatory_data_status(context: DeribitClient, id: string)
   remove_elements_from_existing_array(context.obligatory_data_pending, id);
   if (!context.obligatory_data_received.includes(id)) {
     context.obligatory_data_received.push(id);
+  }
+}
+
+export function validate_user_requests(context: DeribitClient) {
+  let no_indexes = !context.indexes || context.indexes.length === 0;
+  let no_instruments = !context.instruments || context.instruments.length === 0;
+  to_console(
+    context,
+    `No indexes or instruments to monitor or trade, add one or both of the options: indexes or instruments`,
+  );
+  if (no_indexes && no_instruments) {
+    throw new Error('No indexes or instruments to monitor or trade');
   }
 }

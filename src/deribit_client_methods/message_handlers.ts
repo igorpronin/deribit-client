@@ -16,10 +16,13 @@ import { to_console } from './utils';
 export function handle_subscribed_message(context: DeribitClient, msg: RpcSubscribedMsg) {
   const { result } = msg;
   result.forEach((subscription) => {
-    remove_elements_from_existing_array(context.pending_subscriptions, subscription);
-    context.active_subscriptions.push(subscription);
-    context.ee.emit('subscribed', subscription);
-    to_console(context, `Subscribed on ${subscription}`);
+    const id = `s/${subscription}`;
+    remove_elements_from_existing_array(context.subscriptions_pending, id);
+    if (!context.subscriptions_active.includes(id)) {
+      context.subscriptions_active.push(id);
+    }
+    context.ee.emit('subscribed', id);
+    to_console(context, `Subscribed on ${id}`);
   });
 }
 
@@ -30,23 +33,25 @@ export function handle_get_account_summaries_message(
   context.username = msg.result.username;
   context.acc_type = msg.result.type;
   context.user_id = msg.result.id;
-  to_console(context, `Account summaries received`);
+  to_console(context, `Received: account summaries`);
 }
 
 export function handle_get_instruments_message(context: DeribitClient, msg: RpcGetInstrumentsMsg) {
   const kind = msg.id.split('/')[1] as Kinds;
   const { result } = msg;
   const list = result as Instrument[];
-  context.deribit_instruments_list[kind as keyof typeof context.deribit_instruments_list] = list;
+  context.deribit_instruments_list[kind] = list;
   list.forEach((instrument) => {
     context.deribit_instruments_by_name[instrument.instrument_name] = instrument;
   });
+  to_console(context, `Received: ${kind} instruments`);
 }
 
 export function handle_get_currencies_message(context: DeribitClient, msg: RpcGetCurrenciesMsg) {
   const { result } = msg;
   const list = result as CurrencyData[];
   context.deribit_currencies_list.list = list;
+  to_console(context, `Received: currencies`);
 }
 
 export function handle_get_positions_message(context: DeribitClient, msg: RpcGetPositionsMsg) {
@@ -55,6 +60,7 @@ export function handle_get_positions_message(context: DeribitClient, msg: RpcGet
     context.positions[position.instrument_name] = position;
     context.ee.emit('position_updated', position.instrument_name);
   });
+  to_console(context, `Received: positions`);
 }
 
 export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOrderMsg) {

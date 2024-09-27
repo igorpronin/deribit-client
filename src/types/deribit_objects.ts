@@ -1,12 +1,4 @@
-import {
-  Currencies,
-  Kinds,
-  TimeInForce,
-  OrderType,
-  OrderDirections,
-  Instruments,
-  OrderStates,
-} from './types';
+import { Currencies, Kinds, TimeInForce, OrderType, OrderDirections, OrderStates } from './types';
 
 // https://docs.deribit.com/#private-get_account_summary
 // todo finalize structure
@@ -149,7 +141,7 @@ export interface TickerData {
   interest_value: number;
   instrument_name: string;
   index_price: number;
-  funding_8h: number;
+  funding_8h?: number;
   estimated_delivery_price: number;
   current_funding: number;
   best_bid_price: number;
@@ -201,7 +193,7 @@ export interface Order {
   label: string;
   is_rebalance?: boolean;
   is_liquidation?: boolean;
-  instrument_name: Instruments;
+  instrument_name: string;
   filled_amount: number;
   direction: OrderDirections;
   creation_timestamp?: number;
@@ -226,7 +218,7 @@ export interface Trade {
   mark_price: number;
   liquidity: 'M' | 'T'; // "M" when it was maker order, "T" when it was taker order
   label: string;
-  instrument_name: Instruments;
+  instrument_name: string;
   index_price: number;
   fee_currency: Currencies;
   fee: number;
@@ -243,7 +235,7 @@ export interface Position {
   floating_profit_loss: number;
   index_price: number;
   initial_margin: number;
-  instrument_name: Instruments;
+  instrument_name: string;
   interest_value: number;
   kind: Kinds;
   leverage: number;

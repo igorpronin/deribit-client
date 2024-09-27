@@ -4,9 +4,43 @@ import {
   request_get_account_summaries,
   request_open_order,
 } from '../rpc_requests';
-import { GetInstrumentID, IDs, Kinds, OrderParams } from '../types/types';
+import { GetInstrumentID, IDs, Kinds, OrderParams, Subscriptions, Indexes } from '../types/types';
 import { DeribitClient } from '../DeribitClient';
 import { to_console } from './utils';
+import { request_subscribe } from '../rpc_requests';
+
+export function process_subscribe(context: DeribitClient, subscription: Subscriptions) {
+  if (
+    context.subscriptions_pending.includes(subscription) ||
+    context.subscriptions_active.includes(subscription)
+  ) {
+    return;
+  }
+  to_console(context, `Subscribing to s/${subscription}...`);
+  const { id } = request_subscribe(context.client, subscription);
+  context.subscriptions_pending.push(id);
+}
+
+export function process_subscribe_requested_indexes(context: DeribitClient) {
+  if (!context.indexes) {
+    return;
+  }
+  context.indexes.forEach((index: Indexes) => {
+    process_subscribe(context, `deribit_price_index.${index}`);
+  });
+}
+
+export function process_subscribe_requested_instruments(context: DeribitClient) {
+  if (!context.instruments) {
+    return;
+  }
+  context.instruments.forEach((instrument: string) => {
+    if (!context.deribit_instruments_by_name[instrument]) {
+      throw new Error(`Instrument ${instrument} not found`);
+    }
+    process_subscribe(context, `ticker.${instrument}.raw`);
+  });
+}
 
 export function process_get_positions(context: DeribitClient) {
   if (!context.auth_data.state) {
@@ -21,7 +55,7 @@ export function process_get_account_summaries(context: DeribitClient) {
   if (!context.auth_data.state) {
     throw new Error('Not authorized');
   }
-  to_console(context, 'Getting account summaries...');
+  to_console(context, 'Requesting account summaries...');
   const { id } = request_get_account_summaries(context.client);
   return id;
 }
@@ -43,7 +77,7 @@ export function process_get_currencies(context: DeribitClient) {
 }
 
 export function process_request_obligatory_data(context: DeribitClient) {
-  to_console(context, 'Requesting obligatory initial data...');
+  to_console(context, 'Processing requests for obligatory initial data...');
 
   const account_summaries_id = process_get_account_summaries(context);
   context.obligatory_data_pending.push(account_summaries_id);

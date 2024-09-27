@@ -4,7 +4,6 @@ import { is_value_in_enum } from '@igorpronin/utils';
 import {
   Currencies,
   RpcMessage,
-  Subscriptions,
   OrderParams,
   OrderData,
   Kinds,
@@ -27,6 +26,7 @@ import {
 } from './deribit_client_methods/root_handlers';
 import { create_process_open_order } from './deribit_client_methods/actions';
 import { auth } from './deribit_client_methods/auth_requests_and_handlers';
+import { validate_user_requests } from './deribit_client_methods/utils';
 
 type AuthData = {
   state: boolean;
@@ -51,8 +51,8 @@ type Params = {
   client_id: string;
   instance_id?: string;
   output_console?: boolean;
-  indexes_to_monitor_or_trade?: Indexes[];
-  instruments_to_monitor_or_trade?: string[];
+  indexes?: Indexes[];
+  instruments?: string[];
   on_open?: () => void;
   on_close?: () => void;
   on_error?: (error?: Error) => void;
@@ -98,6 +98,8 @@ export class DeribitClient {
   public acc_type: string | undefined;
   public user_id: number | undefined;
   public output_console: boolean | undefined = true;
+  public indexes: Indexes[] | undefined;
+  public instruments: string[] | undefined;
   // End of user defined variables and connection attributes
 
   // Event handler functions
@@ -137,19 +139,13 @@ export class DeribitClient {
   public is_instance_ready: boolean = false;
   // End of Auth and connection data
 
-  // Utils
-  // public to_console: (msg: string, error?: RpcError) => void;
-  // public validate_if_instance_is_ready: () => void;
-  // public init_pending_subscriptions_check: () => void;
-  // End of Utils
-
   // Actions
   public process_open_order: (params: OrderParams) => string;
   // End of Actions
 
   // Subscriptions and obligatory data
-  public pending_subscriptions: Subscriptions[] = [];
-  public active_subscriptions: Subscriptions[] = [];
+  public subscriptions_pending: string[] = [];
+  public subscriptions_active: string[] = [];
   public obligatory_data_pending: string[] = [];
   public obligatory_data_received: string[] = [];
   // End of Subscriptions and obligatory data
@@ -166,7 +162,7 @@ export class DeribitClient {
 
   public positions: Record<string, Position> = {};
 
-  public indexes: Partial<Record<Indexes, number | null>> = {};
+  public indexes_list: Partial<Record<Indexes, number | null>> = {};
 
   public deribit_instruments_list: Partial<Record<Kinds, Instrument[]>> = {};
 
@@ -177,34 +173,22 @@ export class DeribitClient {
   public deribit_currencies_list: CurrenciesData = { list: [] };
 
   constructor(params: Params) {
-    const { api_env, api_key, client_id, output_console, on_open, on_close, on_message, on_error } =
-      params;
+    const {
+      api_env,
+      api_key,
+      client_id,
+      output_console,
+      indexes,
+      instruments,
+      on_open,
+      on_close,
+      on_message,
+      on_error,
+    } = params;
 
     if (!api_env || !is_value_in_enum(api_env, ['prod', 'test'])) {
       throw new Error('Invalid API environment');
     }
-
-    // Applying external functions (utils) to the class context
-    // this.to_console = create_to_console(this);
-    // this.count_refresh = create_count_refresh(this);
-    // this.handle_refresh_counter = create_handle_refresh_counter(this);
-    // this.validate_if_instance_is_ready = create_validate_if_instance_is_ready(this);
-    // this.init_pending_subscriptions_check = create_init_pending_subscriptions_check(this);
-    // End of Utils
-
-    // Applying auth methods
-    // this.auth = create_auth(this);
-    // this.re_auth = create_re_auth(this);
-    // this.handle_auth_message = create_handle_auth_message(this);
-    // End of Applying auth methods
-
-    // Applying message handlers
-    // this.handle_subscribed_message = create_handle_subscribed_message(this);
-    // this.handle_get_instruments_message = create_handle_get_instruments_message(this);
-    // this.handle_get_currencies_message = create_handle_get_currencies_message(this);
-    // this.handle_get_positions_message = create_handle_get_positions_message(this);
-    // this.handle_open_order_message = create_handle_open_order_message(this);
-    // End of Applying message handlers
 
     // Applying public actions
     this.process_open_order = create_process_open_order(this);
@@ -219,6 +203,10 @@ export class DeribitClient {
     this.api_key = api_key;
     this.client_id = client_id;
     this.client = new WebSocket(this.ws_api_url);
+    this.indexes = indexes;
+    this.instruments = instruments;
+
+    validate_user_requests(this);
 
     this.ee = new EventEmitter();
 
@@ -281,11 +269,11 @@ export class DeribitClient {
     };
   };
 
-  public get_index = (index: Indexes) => this.indexes[index];
+  public get_index = (index: Indexes) => this.indexes_list[index];
 
-  public get_pending_subscriptions = () => this.pending_subscriptions;
+  public get_pending_subscriptions = () => this.subscriptions_pending;
 
-  public get_active_subscriptions = () => this.active_subscriptions;
+  public get_active_subscriptions = () => this.subscriptions_active;
 
   public get_account_summaries = () => this.account_summaries;
 
@@ -295,6 +283,8 @@ export class DeribitClient {
     this.deribit_instruments_by_name[instrument_name];
 
   public get_deribit_currencies_list = () => this.deribit_currencies_list.list;
+
+  public get_ticker_data = (instrument_name: string) => this.ticker_data[instrument_name];
 
   public get_raw_ticker_data = (instrument_name: string) => this.ticker_data[instrument_name]?.raw;
 
