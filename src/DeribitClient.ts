@@ -1,10 +1,21 @@
 import WebSocket from 'ws';
-import { clearInterval } from 'timers';
 import EventEmitter from 'events';
 import { is_value_in_enum, remove_elements_from_existing_array } from '@igorpronin/utils';
 import {
-  AccountsSummary,
-  AccSummaryIDs,
+  create_to_console,
+  create_init_pending_subscriptions_check,
+  create_count_refresh,
+  create_handle_refresh_counter,
+  create_validate_if_instance_is_ready,
+} from './deribit_client_methods/utils';
+import {
+  create_handle_subscribed_message,
+  create_handle_get_instruments_message,
+  create_handle_get_currencies_message,
+  create_handle_get_positions_message,
+  create_handle_open_order_message,
+} from './deribit_client_methods/message_handlers';
+import {
   AccountSummary,
   Currencies,
   IDs,
@@ -12,18 +23,14 @@ import {
   PublicMethods,
   RpcAuthMsg,
   RpcError,
-  RpcMessages,
+  RpcMessage,
   RpcSubscribedMsg,
   Subscriptions,
   OrderParams,
   OrderData,
   RpcOpenOrderMsg,
-  RpcAccSummariesMsg,
-  RpcSubscriptionMsg,
-  Portfolio,
   UserPortfolioByCurrency,
   Indexes,
-  BTCIndexData,
   GetInstrumentIDs,
   RpcGetInstrumentsMsg,
   Instrument,
@@ -33,6 +40,9 @@ import {
   TickerData,
   RpcGetPositionsMsg,
   Position,
+  RpcErrorResponse,
+  RpcSuccessResponse,
+  RpcSubscriptionMessage,
 } from './types';
 import {
   request_get_account_summary,
@@ -42,7 +52,16 @@ import {
   request_subscribe,
   custom_request,
 } from './actions';
-import { calculate_future_apr_and_premium } from './helpers';
+import {
+  create_handle_rpc_error_response,
+  create_handle_rpc_subscription_message,
+  create_handle_rpc_success_response,
+} from './deribit_client_methods/root_handlers';
+import {
+  create_auth,
+  create_re_auth,
+  create_handle_auth_message,
+} from './deribit_client_methods/auth_requests_and_handlers';
 
 type AuthData = {
   state: boolean;
@@ -70,7 +89,7 @@ type Params = {
   on_open?: () => void;
   on_close?: () => void;
   on_error?: (error?: Error) => void;
-  on_message: (message: RpcMessages) => void;
+  on_message: (message: RpcMessage) => void;
   subscriptions?: Subscriptions[];
   output_console?: boolean;
 };
@@ -95,65 +114,46 @@ type Orders = {
 };
 
 export class DeribitClient {
-  private msg_prefix = '[Deribit client]';
-  private refresh_interval = 550; // Refresh authorisation interval in seconds
+  // Predefined variables
+  protected msg_prefix = '[Deribit client]';
   private subscriptions_check_time = 5; // Time in seconds after ws opened and authorized to check if pending subscriptions still exist
+  // End of predefined variables
 
-  client: WebSocket;
-
+  // WebSocket client and Event Emitter
+  public client: WebSocket;
   public ee: EventEmitter;
+  // End of WebSocket client and Event Emitter
 
-  // Instance is ready when all obligatory data is received
-  // and all subscriptions are active (not pending or requested)
-  //
-  // All the arrays (requested_subscriptions, obligatory_subscriptions, pending_subscriptions,
-  // obligatory_data) are used for the checks and should be empty when instance is ready
-  //
-  // Trade operations are not allowed when instance is not ready
-  private is_instance_ready: boolean = false;
-
+  // User defined variables and connection attributes
   private api_env: ApiEnv;
   private ws_api_url: string;
   private api_key: string; // API key
   private client_id: string; // API key ID
-  private output_console: boolean | undefined = true;
   private username: string | undefined;
   private acc_type: string | undefined;
   private user_id: number | undefined;
+  protected output_console: boolean | undefined = true;
   private currencies: Currencies[];
+  // End of user defined variables and connection attributes
+
+  // Event handler functions
   private on_open: () => void;
   private on_close: () => void;
   private on_message: (message: string) => void;
   private on_error: (error: Error) => void;
+  // End of Event handler functions
 
-  private connection_opened_at: null | Date = null;
-  private authorized_at: null | Date = null;
-
+  // Refresh authorisation
+  private count_refresh: () => any;
+  private handle_refresh_counter: () => void;
+  private refresh_interval = 550; // Refresh authorisation interval in seconds
   private refresh_counter: number = 0;
   private refresh_counter_id: any;
+  // End of refresh authorisation
 
-  private requested_subscriptions: Subscriptions[] = [];
-  private obligatory_subscriptions: Subscriptions[] = [PrivateSubscriptions.ChangesAnyAny];
-  private pending_subscriptions: Subscriptions[] = [];
-  private active_subscriptions: Subscriptions[] = [];
-
-  private obligatory_data = [
-    GetInstrumentIDs.GetInstrumentFuture,
-    GetInstrumentIDs.GetInstrumentOptions,
-    GetInstrumentIDs.GetInstrumentSpot,
-    IDs.GetCurrencies,
-    IDs.GetPositions,
-  ];
-  private obligatory_data_pending: string[] = [];
-  private obligatory_data_received: string[] = [];
-
-  private orders: Orders = {
-    pending_orders_amount: 0,
-    all: {},
-    list: [],
-    by_ref_id: {},
-  };
-
+  // Auth, connection data, ready state
+  private connection_opened_at: null | Date = null;
+  private authorized_at: null | Date = null;
   private auth_data: AuthData = {
     state: false,
     refresh_token: null,
@@ -163,37 +163,77 @@ export class DeribitClient {
       raw: null,
     },
   };
+  /*
+   * Instance is ready when all obligatory data is received
+   * and all subscriptions are active (not pending or requested)
+   *
+   * All the arrays (requested_subscriptions, obligatory_subscriptions, pending_subscriptions,
+   * obligatory_data) are used for the checks and should be empty when instance is ready
+   *
+   * Trade operations are not allowed when instance is not ready
+   */
+  private is_instance_ready: boolean = false;
+  // End of Auth and connection data
 
-  private accounts_summary: AccountsSummary = {
-    BTC: null,
-    ETH: null,
-    USDC: null,
-    USDT: null,
+  // Auth methods
+  private auth: () => void;
+  private re_auth: () => void;
+  private handle_auth_message: (msg: RpcAuthMsg, is_re_auth: boolean) => void;
+  // End of Auth methods
+
+  // Utils
+  private to_console: (msg: string, error?: RpcError) => void;
+  private validate_if_instance_is_ready: () => void;
+  private init_pending_subscriptions_check: () => void;
+  // End of Utils
+
+  // Root handlers
+  private handle_rpc_error_response: (msg: RpcErrorResponse) => void;
+  private handle_rpc_subscription_message: (msg: RpcSubscriptionMessage) => void;
+  private handle_rpc_success_response: (msg: RpcSuccessResponse) => void;
+  // End of Root handlers
+
+  // Message handlers
+  private handle_subscribed_message: (msg: RpcSubscribedMsg) => void;
+  private handle_get_instruments_message: (msg: RpcGetInstrumentsMsg) => void;
+  private handle_get_currencies_message: (msg: RpcGetCurrenciesMsg) => void;
+  private handle_get_positions_message: (msg: RpcGetPositionsMsg) => void;
+  private handle_open_order_message: (msg: RpcOpenOrderMsg) => void;
+  // End of Message handlers
+
+  // Subscriptions and obligatory data
+  private requested_subscriptions: Subscriptions[] = [];
+  private obligatory_subscriptions: Subscriptions[] = [PrivateSubscriptions.ChangesAnyAny];
+  private pending_subscriptions: Subscriptions[] = [];
+  private active_subscriptions: Subscriptions[] = [];
+  private obligatory_data = [
+    GetInstrumentIDs.GetInstrumentFuture,
+    GetInstrumentIDs.GetInstrumentOptions,
+    GetInstrumentIDs.GetInstrumentSpot,
+    IDs.GetCurrencies,
+    IDs.GetPositions,
+  ];
+  private obligatory_data_pending: string[] = [];
+  private obligatory_data_received: string[] = [];
+  // End of Subscriptions and obligatory data
+
+  // Other
+  private orders: Orders = {
+    pending_orders_amount: 0,
+    all: {},
+    list: [],
+    by_ref_id: {},
   };
 
-  private portfolio: Portfolio = {
-    BTC: null,
-    ETH: null,
-    USDC: null,
-    USDT: null,
-  };
+  private portfolio: Partial<Record<Currencies, UserPortfolioByCurrency>> = {};
+
+  private accounts_summary: Partial<Record<Currencies, AccountSummary>> = {};
 
   private positions: Record<string, Position> = {};
 
-  private indexes: { [key in Indexes]: number | null } = {
-    btc_usd: null,
-    eth_usd: null,
-  };
+  private indexes: Partial<Record<Indexes, number | null>> = {};
 
-  private deribit_instruments_list: {
-    [key in Kinds]: Instrument[];
-  } = {
-    spot: [],
-    future: [],
-    option: [],
-    future_combo: [],
-    option_combo: [],
-  };
+  private deribit_instruments_list: Partial<Record<Kinds, Instrument[]>> = {};
 
   private deribit_instruments_by_name: Record<string, Instrument> = {};
 
@@ -214,9 +254,38 @@ export class DeribitClient {
       currencies,
       output_console,
     } = params;
+
     if (!api_env || !is_value_in_enum(api_env, ['prod', 'test'])) {
       throw new Error('Invalid API environment');
     }
+
+    // Applying external functions (utils) to the class context
+    this.to_console = create_to_console(this);
+    this.count_refresh = create_count_refresh(this);
+    this.handle_refresh_counter = create_handle_refresh_counter(this);
+    this.validate_if_instance_is_ready = create_validate_if_instance_is_ready(this);
+    this.init_pending_subscriptions_check = create_init_pending_subscriptions_check(this);
+    // End of Utils
+
+    // Applying root handlers
+    this.handle_rpc_error_response = create_handle_rpc_error_response(this);
+    this.handle_rpc_subscription_message = create_handle_rpc_subscription_message(this);
+    this.handle_rpc_success_response = create_handle_rpc_success_response(this);
+    // End of Applying root handlers
+
+    // Applying auth methods
+    this.auth = create_auth(this);
+    this.re_auth = create_re_auth(this);
+    this.handle_auth_message = create_handle_auth_message(this);
+    // End of Applying auth methods
+
+    // Applying message handlers
+    this.handle_subscribed_message = create_handle_subscribed_message(this);
+    this.handle_get_instruments_message = create_handle_get_instruments_message(this);
+    this.handle_get_currencies_message = create_handle_get_currencies_message(this);
+    this.handle_get_positions_message = create_handle_get_positions_message(this);
+    this.handle_open_order_message = create_handle_open_order_message(this);
+    // End of Applying message handlers
 
     if (params.instance_id) {
       this.msg_prefix = `[Deribit client (${params.instance_id})]`;
@@ -260,102 +329,22 @@ export class DeribitClient {
       }
     };
     this.on_message = (message) => {
-      const parsed: RpcMessages = JSON.parse(message);
+      const parsed: RpcMessage = JSON.parse(message);
 
-      if (parsed.error) {
-        this.to_console(`RPC error: ${parsed.error.message}`, parsed.error);
+      if ('error' in parsed) {
+        this.handle_rpc_error_response(parsed as RpcErrorResponse);
         return;
       }
 
       if ('method' in parsed && parsed.method === 'subscription') {
-        this.handle_subscription_message(parsed as RpcSubscriptionMsg);
-        on_message(parsed as RpcMessages);
+        this.handle_rpc_subscription_message(parsed as RpcSubscriptionMessage);
+        on_message(parsed as RpcMessage);
         return;
       }
 
-      if (parsed.id === IDs.Auth) {
-        this.handle_auth_message(parsed as RpcAuthMsg, false);
-        this.process_request_obligatory_data();
-        this.process_subscribe_on_requested_and_obligatory();
-        this.process_get_account_summaries_by_tickers();
-        this.process_get_account_summaries();
-        this.init_pending_subscriptions_check();
-        on_message(parsed as RpcMessages);
-        return;
-      }
-
-      if (parsed.id === IDs.ReAuth) {
-        this.handle_auth_message(parsed as RpcAuthMsg, true);
-        on_message(parsed as RpcMessages);
-        return;
-      }
-
-      if (parsed.id.startsWith('s/')) {
-        this.handle_subscribed_message(parsed as RpcSubscribedMsg);
-        if (this.pending_subscriptions.length === 0) {
-          this.ee.emit('subscribed_all');
-        }
-        this.validate_if_instance_is_ready();
-        on_message(parsed as RpcMessages);
-        return;
-      }
-
-      if (parsed.id?.startsWith('o/')) {
-        this.handle_open_order_message(parsed as RpcOpenOrderMsg);
-        on_message(parsed as RpcMessages);
-        return;
-      }
-
-      if (is_value_in_enum(parsed.id, AccSummaryIDs)) {
-        if ('result' in parsed) {
-          const currency = parsed.id.split('/')[1] as Currencies;
-          this.accounts_summary[currency] = parsed.result as AccountSummary;
-          this.to_console(`Account summary for the currency ${currency} updated`);
-        }
-        on_message(parsed as RpcMessages);
-        return;
-      }
-
-      if (parsed.id === IDs.AccSummaries) {
-        const data = parsed as RpcAccSummariesMsg;
-        this.username = data.result.username;
-        this.acc_type = data.result.type;
-        this.user_id = data.result.id;
-        this.to_console(`Account summaries got`);
-        on_message(parsed as RpcMessages);
-        return;
-      }
-
-      if (parsed.id === IDs.GetCurrencies) {
-        if ('result' in parsed) {
-          remove_elements_from_existing_array(this.obligatory_data_pending, parsed.id);
-          this.obligatory_data_received.push(parsed.id);
-        }
-        this.handle_get_currencies_message(parsed as unknown as RpcGetCurrenciesMsg);
-        this.validate_if_instance_is_ready();
-        on_message(parsed as RpcMessages);
-        return;
-      }
-
-      if (parsed.id === IDs.GetPositions) {
-        if ('result' in parsed) {
-          remove_elements_from_existing_array(this.obligatory_data_pending, parsed.id);
-          this.obligatory_data_received.push(parsed.id);
-        }
-        this.handle_get_positions_message(parsed as unknown as RpcGetPositionsMsg);
-        this.validate_if_instance_is_ready();
-        on_message(parsed as RpcMessages);
-        return;
-      }
-
-      if (parsed.id.startsWith('get_instruments/')) {
-        if ('result' in parsed) {
-          remove_elements_from_existing_array(this.obligatory_data_pending, parsed.id);
-          this.obligatory_data_received.push(parsed.id);
-        }
-        this.handle_get_instruments_message(parsed as unknown as RpcGetInstrumentsMsg);
-        this.validate_if_instance_is_ready();
-        on_message(parsed as RpcMessages);
+      if ('result' in parsed) {
+        this.handle_rpc_success_response(parsed as RpcSuccessResponse);
+        on_message(parsed as RpcMessage);
         return;
       }
     };
@@ -365,234 +354,6 @@ export class DeribitClient {
     this.client.on('message', this.on_message);
     this.client.on('error', this.on_error);
   }
-
-  private to_console = (msg: string, error?: any) => {
-    if (error) {
-      console.error(`${this.msg_prefix} ${msg}`);
-      console.error(error);
-    }
-    if (!this.output_console) {
-      return;
-    }
-    if (!error) {
-      console.log(`${this.msg_prefix} ${msg}`);
-    }
-  };
-
-  private validate_if_instance_is_ready = () => {
-    const previous_state = this.is_instance_ready;
-    this.is_instance_ready =
-      this.pending_subscriptions.length === 0 && this.obligatory_data_pending.length === 0;
-    const new_state = this.is_instance_ready;
-    if (previous_state !== new_state && new_state) {
-      this.ee.emit('instance_ready');
-    }
-  };
-
-  private count_refresh = () => {
-    return setInterval(() => {
-      this.refresh_counter++;
-      this.handle_refresh_counter();
-    }, 1000);
-  };
-
-  private handle_refresh_counter = () => {
-    if (this.refresh_counter === this.refresh_interval) {
-      clearInterval(this.refresh_counter_id);
-      this.refresh_counter = 0;
-      this.re_auth();
-    }
-  };
-
-  private auth = () => {
-    this.to_console(`Initial Deribit authorisation for the client ${this.client_id} processing...`);
-    const msg = {
-      jsonrpc: '2.0',
-      id: IDs.Auth,
-      method: PublicMethods.Auth,
-      params: {
-        grant_type: 'client_credentials',
-        client_id: this.client_id,
-        client_secret: this.api_key,
-      },
-    };
-    this.client.send(JSON.stringify(msg));
-  };
-
-  private re_auth = () => {
-    this.to_console(`Deribit re authorisation for the client ${this.client_id} processing...`);
-    const msg = {
-      jsonrpc: '2.0',
-      id: IDs.ReAuth,
-      method: PublicMethods.Auth,
-      params: {
-        grant_type: 'refresh_token',
-        refresh_token: this.auth_data.refresh_token,
-      },
-    };
-    this.client.send(JSON.stringify(msg));
-  };
-
-  private init_pending_subscriptions_check = () => {
-    setTimeout(() => {
-      if (this.pending_subscriptions.length) {
-        let m = 'WARNING! Pending subscriptions still exist';
-        this.pending_subscriptions.forEach((s) => {
-          m += `\n   ${s}`;
-        });
-        this.to_console(m);
-      }
-    }, this.subscriptions_check_time * 1000);
-  };
-
-  private handle_rpc_error = (msg: string, is_critical: boolean, error: RpcError) => {
-    const { code, message } = error;
-    const m = `${msg} (message: ${message}, code: ${code})`;
-    this.to_console(m);
-    if (is_critical) {
-      throw new Error(m);
-    }
-  };
-
-  private handle_auth_message = (msg: RpcAuthMsg, is_re_auth: boolean) => {
-    let success_msg, err_msg;
-    if (!is_re_auth) {
-      success_msg = 'Authorized!';
-      err_msg = 'Error during auth';
-    } else {
-      success_msg = 'Authorisation refreshed!';
-      err_msg = 'Error during re-auth';
-    }
-    if (msg.error) {
-      this.auth_data.state = false;
-      this.handle_rpc_error(err_msg, true, msg.error);
-    }
-    if (msg.result) {
-      this.auth_data.refresh_token = msg.result.refresh_token;
-      this.auth_data.access_token = msg.result.access_token;
-      this.auth_data.expires_in = msg.result.expires_in;
-      this.auth_data.scope.raw = msg.result.scope;
-      this.refresh_counter_id = this.count_refresh();
-      if (!is_re_auth) {
-        this.authorized_at = new Date();
-        this.ee.emit('authorized');
-      }
-      this.auth_data.state = true;
-      this.to_console(success_msg);
-    }
-  };
-
-  private handle_subscribed_message = (msg: RpcSubscribedMsg) => {
-    if (msg.error) {
-      this.handle_rpc_error('Subscription error', true, msg.error);
-    }
-    const { result } = msg;
-    result.forEach((subscription) => {
-      remove_elements_from_existing_array(this.pending_subscriptions, subscription);
-      this.active_subscriptions.push(subscription);
-      this.ee.emit('subscribed', subscription);
-      this.to_console(`Subscribed on ${subscription}`);
-    });
-  };
-
-  private handle_subscription_message = (msg: RpcSubscriptionMsg) => {
-    const { channel, data } = msg.params;
-    if (channel.startsWith('user.portfolio')) {
-      const currency = channel.split('.')[2].toUpperCase() as Currencies;
-      this.portfolio[currency] = data as UserPortfolioByCurrency;
-      this.ee.emit('portfolio_updated', currency);
-      return;
-    }
-    if (channel.startsWith('deribit_price_index')) {
-      const pair = channel.split('.')[1] as Indexes;
-      const { price } = data as BTCIndexData;
-      this.indexes[pair] = price;
-      this.ee.emit('index_updated', pair);
-      return;
-    }
-    if (channel.startsWith('ticker')) {
-      const instrument_name = channel.split('.')[1];
-      if (!this.ticker_data[instrument_name]) {
-        this.ticker_data[instrument_name] = {
-          raw: data as TickerData,
-          calculated: {
-            time_to_expiration_in_minutes: null,
-            apr: null,
-            premium_absolute: null,
-            premium_relative: null,
-          },
-        };
-      }
-      this.ticker_data[instrument_name].raw = data as TickerData;
-      this.ticker_data[instrument_name].calculated = calculate_future_apr_and_premium({
-        index_price: this.ticker_data[instrument_name].raw.index_price,
-        mark_price: this.ticker_data[instrument_name].raw.mark_price,
-        timestamp: this.ticker_data[instrument_name].raw.timestamp,
-        expiration_timestamp:
-          this.deribit_instruments_by_name[instrument_name].expiration_timestamp,
-      });
-      this.ee.emit('ticker_updated', instrument_name);
-      return;
-    }
-    if (channel.startsWith('user.changes')) {
-      const parts = channel.split('.');
-      // console.log(parts);
-      // console.log(data);
-      // this.portfolio[currency] = data as UserPortfolioByCurrency;
-      // this.ee.emit('portfolio_updated', currency);
-      return;
-    }
-  };
-
-  private handle_get_instruments_message = (msg: RpcGetInstrumentsMsg) => {
-    const kind = msg.id.split('/')[1] as Kinds;
-    const { result } = msg;
-    const list = result as Instrument[];
-    this.deribit_instruments_list[kind as keyof typeof this.deribit_instruments_list] = list;
-    list.forEach((instrument) => {
-      this.deribit_instruments_by_name[instrument.instrument_name] = instrument;
-    });
-  };
-
-  private handle_get_currencies_message = (msg: RpcGetCurrenciesMsg) => {
-    const { result } = msg;
-    const list = result as CurrencyData[];
-    this.deribit_currencies_list.list = list;
-  };
-
-  private handle_get_positions_message = (msg: RpcGetPositionsMsg) => {
-    const { result } = msg;
-    result.forEach((position) => {
-      this.positions[position.instrument_name] = position;
-      this.ee.emit('position_updated', position.instrument_name);
-    });
-  };
-
-  private handle_open_order_message = (msg: RpcOpenOrderMsg) => {
-    const id = msg.id.split('/')[1];
-    const order_data = this.orders.all[id];
-    order_data.is_pending = false;
-    this.orders.pending_orders_amount--;
-    if (msg.error) {
-      order_data.rpc_error_message = msg;
-      this.handle_rpc_error('Subscription error', false, msg.error);
-      return;
-    }
-    const order = msg.result.order;
-    const { order_id, order_state } = order;
-    order_data.order_rpc_message_results.push(order);
-    if (!this.orders.by_ref_id[order_id]) {
-      this.orders.by_ref_id[order_id] = order_data;
-    }
-    if (!order_data.state) {
-      order_data.state = order_state;
-    }
-    const is_closing_states =
-      order_state === 'filled' || order_state === 'rejected' || order_state === 'cancelled';
-    if (order_data.state === 'open' && is_closing_states) {
-      order_data.state = order_state;
-    }
-  };
 
   private process_subscribe_on_requested_and_obligatory = () => {
     if (!this.auth_data.state) {
@@ -707,14 +468,14 @@ export class DeribitClient {
   public get_calculated_ticker_data = (instrument_name: string) =>
     this.ticker_data[instrument_name]?.calculated;
 
-  public open_order = (params: OrderParams) => {
+  public open_order = (params: OrderParams): string => {
     if (!this.auth_data.state) {
       throw new Error('Not authorized');
     }
     if (!this.is_instance_ready) {
       throw new Error('Instance is not ready');
     }
-    const id = request_open_order(this.client, params);
+    const {id} = request_open_order(this.client, params);
     this.orders.pending_orders_amount++;
     const order_data = {
       initial: params,
@@ -725,9 +486,11 @@ export class DeribitClient {
     };
     this.orders.all[id] = order_data;
     this.orders.list.push(order_data);
+    return id;
   };
 
   public get_positions = () => this.positions;
 
-  public get_position_by_instrument_name = (instrument_name: string) => this.positions[instrument_name];
+  public get_position_by_instrument_name = (instrument_name: string) =>
+    this.positions[instrument_name];
 }

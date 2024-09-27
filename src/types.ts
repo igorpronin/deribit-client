@@ -76,24 +76,6 @@ type RpcIDs =
   | GetInstrumentIDs
   | `o/${string}`;
 
-export type RpcError = {
-  code: number;
-  message: string;
-};
-
-interface RpcMsg {
-  id: RpcIDs;
-  usIn: number;
-  usOut: number;
-  usDiff: number;
-  error?: RpcError;
-}
-
-export interface RpcSubscriptionMsg extends RpcMsg {
-  method: 'subscription';
-  params: SubscriptionParams;
-}
-
 export enum Currencies {
   BTC = 'BTC',
   ETH = 'ETH',
@@ -390,20 +372,6 @@ export interface UserPortfolioByCurrency {
   options_theta_map: any;
 }
 
-export interface Portfolio {
-  BTC: null | UserPortfolioByCurrency;
-  ETH: null | UserPortfolioByCurrency;
-  USDC: null | UserPortfolioByCurrency;
-  USDT: null | UserPortfolioByCurrency;
-}
-
-export interface AccountsSummary {
-  BTC: null | AccountSummary;
-  ETH: null | AccountSummary;
-  USDC: null | AccountSummary;
-  USDT: null | AccountSummary;
-}
-
 // https://docs.deribit.com/#private-get_account_summary
 // todo finalize structure
 export interface AccountSummary {
@@ -479,7 +447,7 @@ export interface AccountSummary {
   session_rpl: number;
 }
 
-export interface RpcAuthMsg extends RpcMsg {
+export interface RpcAuthMsg extends RpcSuccessResponse {
   id: IDs.Auth | IDs.ReAuth;
   result: {
     token_type: string;
@@ -490,14 +458,14 @@ export interface RpcAuthMsg extends RpcMsg {
   };
 }
 
-export interface RpcSubscribedMsg extends RpcMsg {
+export interface RpcSubscribedMsg extends RpcSuccessResponse {
   id: Subscriptions;
   result: Subscriptions[];
 }
 
 // https://docs.deribit.com/#private-buy
 // https://docs.deribit.com/#private-sell
-export interface RpcOpenOrderMsg extends RpcMsg {
+export interface RpcOpenOrderMsg extends RpcSuccessResponse {
   id: `o/${string}`;
   result: {
     trades: Trade[];
@@ -505,12 +473,12 @@ export interface RpcOpenOrderMsg extends RpcMsg {
   };
 }
 
-export interface RpcAccSummaryMsg extends RpcMsg {
+export interface RpcAccSummaryMsg extends RpcSuccessResponse {
   id: AccSummaryIDs;
   result: AccountSummary;
 }
 
-export interface RpcAccSummariesMsg extends RpcMsg {
+export interface RpcAccSummariesMsg extends RpcSuccessResponse {
   id: IDs.AccSummaries;
   result: {
     id: number;
@@ -519,25 +487,48 @@ export interface RpcAccSummariesMsg extends RpcMsg {
   };
 }
 
-export interface RpcGetInstrumentsMsg extends RpcMsg {
+export interface RpcGetInstrumentsMsg extends RpcSuccessResponse {
   id: GetInstrumentIDs;
   result: Instrument[];
 }
 
-export interface RpcGetCurrenciesMsg extends RpcMsg {
+export interface RpcGetCurrenciesMsg extends RpcSuccessResponse {
   id: IDs.GetCurrencies;
   result: CurrencyData[];
 }
 
-export interface RpcGetPositionsMsg extends RpcMsg {
+export interface RpcGetPositionsMsg extends RpcSuccessResponse {
   id: IDs.GetPositions;
   result: Position[];
 }
 
-export type RpcMessages =
-  | RpcAuthMsg
-  | RpcSubscribedMsg
-  | RpcSubscriptionMsg
-  | RpcAccSummaryMsg
-  | RpcOpenOrderMsg
-  | RpcAccSummariesMsg;
+// Root types and interfaces
+
+export type RpcError = {
+  code: number;
+  message: string;
+};
+
+export interface RpcErrorResponse extends RpcMsg {
+  error: RpcError;
+}
+
+export interface RpcSuccessResponse extends RpcMsg {
+  result: any;
+}
+
+export interface RpcSubscriptionMessage extends RpcMsg {
+  method: 'subscription';
+  params: SubscriptionParams;
+}
+
+interface RpcMsg {
+  id: string;
+  usIn: number;
+  usOut: number;
+  usDiff: number;
+}
+
+type RpcResponseMessage = RpcSuccessResponse | RpcErrorResponse;
+
+export type RpcMessage = RpcResponseMessage | RpcSubscriptionMessage;

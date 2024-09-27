@@ -25,23 +25,15 @@ export const custom_request = (client: WebSocket, method: string, id: string, pa
   return msg;
 };
 
-export const request_subscribe = (client: WebSocket, subscription: Subscriptions) => {
-  const msg: any = {
-    jsonrpc: '2.0',
-    id: `s/${subscription}`,
-    params: {
-      channels: [subscription],
-    },
-  };
-
-  if (starts_with_prefix(PublicSubscriptionPrefix, subscription)) {
-    msg.method = PublicMethods.PublicSubscribe;
-  }
+export const request_subscribe = (client: WebSocket, subscription: Subscriptions): {msg: any, subscription: Subscriptions} => {
+  let method: PublicMethods | PrivateMethods = PublicMethods.PublicSubscribe;
   if (is_value_in_enum(subscription, PrivateSubscriptions)) {
-    msg.method = PrivateMethods.PrivateSubscribe;
+    method = PrivateMethods.PrivateSubscribe;
   }
-  client.send(JSON.stringify(msg));
-  return subscription;
+  const msg = custom_request(client, method, `s/${subscription}`, {
+    channels: [subscription],
+  });
+  return {msg, subscription};
 };
 
 export const requests_subscribe_to_portfolio = (client: WebSocket, currencies: Currencies[]) => {
@@ -53,66 +45,52 @@ export const requests_subscribe_to_portfolio = (client: WebSocket, currencies: C
 // https://docs.deribit.com/#private-get_account_summary
 // To read subaccount summary use subaccount_id parameter (not implemented yet)
 export const request_get_account_summary = (client: WebSocket, currency: Currencies) => {
-  const msg: any = {
-    jsonrpc: '2.0',
-    method: PrivateMethods.AccountSummary,
-    params: {
-      currency: currency,
-      extended: true,
-    },
-  };
+  let id: AccSummaryIDs;
   switch (currency) {
     case Currencies.BTC:
-      msg.id = AccSummaryIDs.AccountSummaryBtc;
+      id = AccSummaryIDs.AccountSummaryBtc;
       break;
     case Currencies.ETH:
-      msg.id = AccSummaryIDs.AccountSummaryEth;
+      id = AccSummaryIDs.AccountSummaryEth;
       break;
     case Currencies.USDC:
-      msg.id = AccSummaryIDs.AccountSummaryUsdc;
+      id = AccSummaryIDs.AccountSummaryUsdc;
       break;
     case Currencies.USDT:
-      msg.id = AccSummaryIDs.AccountSummaryUsdt;
+      id = AccSummaryIDs.AccountSummaryUsdt;
       break;
     default:
       return;
   }
-  client.send(JSON.stringify(msg));
+  const msg = custom_request(client, PrivateMethods.AccountSummary, id, {
+    currency: currency,
+    extended: true,
+  });
+  return msg;
 };
 
 // https://docs.deribit.com/#private-get_account_summaries
 export const request_get_account_summaries = (client: WebSocket) => {
-  const msg: any = {
-    jsonrpc: '2.0',
-    id: IDs.AccSummaries,
-    method: PrivateMethods.AccountSummaries,
-    params: {
-      extended: true,
-    },
-  };
-  client.send(JSON.stringify(msg));
+  const msg = custom_request(client, PrivateMethods.AccountSummaries, IDs.AccSummaries, {
+    extended: true,
+  });
+  return msg;
 };
 
 // https://docs.deribit.com/#private-get_positions
 export const request_get_positions = (client: WebSocket) => {
-  const msg: any = {
-    jsonrpc: '2.0',
-    id: IDs.GetPositions,
-    method: PrivateMethods.GetPositions,
-    params: { currency: 'any' },
-  };
-  client.send(JSON.stringify(msg));
+  const msg = custom_request(client, PrivateMethods.GetPositions, IDs.GetPositions, {
+    currency: 'any',
+  });
+  return msg;
 };
 
 // https://docs.deribit.com/#private-get_order_state
 export const request_get_order_state_by_id = (client: WebSocket, order_id: string) => {
-  const msg: any = {
-    jsonrpc: '2.0',
-    id: IDs.GetOrderState,
-    method: PrivateMethods.GetOrderState,
-    params: { order_id },
-  };
-  client.send(JSON.stringify(msg));
+  const msg = custom_request(client, PrivateMethods.GetOrderState, IDs.GetOrderState, {
+    order_id,
+  });
+  return msg;
 };
 
 // https://docs.deribit.com/#private-buy
@@ -120,7 +98,7 @@ export const request_get_order_state_by_id = (client: WebSocket, order_id: strin
 export const request_open_order = (
   client: WebSocket,
   { direction, amount, type, price, instrument_name, time_in_force }: OrderParams,
-): string => {
+): {id: string, msg: any} => {
   const id = generate_random_id();
   const params = {
     instrument_name,
@@ -130,12 +108,6 @@ export const request_open_order = (
     price,
     time_in_force,
   };
-  const msg = {
-    jsonrpc: '2.0',
-    id: `o/${id}`,
-    method: `private/${direction}`,
-    params,
-  };
-  client.send(JSON.stringify(msg));
-  return id;
+  const msg = custom_request(client, `private/${direction}`, `o/${id}`, params);
+  return {id, msg};
 };
