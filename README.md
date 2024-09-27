@@ -66,7 +66,7 @@ Returns the portfolio for the specified currency.
 #### has_pending_orders()
 Returns a boolean indicating whether there are any pending orders.
 
-#### open_order(params: OrderParams)
+#### process_open_order(params: OrderParams)
 Opens a new order with the specified parameters.
 
 #### get_configuration()

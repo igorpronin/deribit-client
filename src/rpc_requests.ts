@@ -25,7 +25,10 @@ export const custom_request = (client: WebSocket, method: string, id: string, pa
   return msg;
 };
 
-export const request_subscribe = (client: WebSocket, subscription: Subscriptions): {msg: any, subscription: Subscriptions} => {
+export const request_subscribe = (
+  client: WebSocket,
+  subscription: Subscriptions,
+): { msg: any; subscription: Subscriptions } => {
   let method: PublicMethods | PrivateMethods = PublicMethods.PublicSubscribe;
   if (is_value_in_enum(subscription, PrivateSubscriptions)) {
     method = PrivateMethods.PrivateSubscribe;
@@ -33,7 +36,7 @@ export const request_subscribe = (client: WebSocket, subscription: Subscriptions
   const msg = custom_request(client, method, `s/${subscription}`, {
     channels: [subscription],
   });
-  return {msg, subscription};
+  return { msg, subscription };
 };
 
 export const requests_subscribe_to_portfolio = (client: WebSocket, currencies: Currencies[]) => {
@@ -98,7 +101,7 @@ export const request_get_order_state_by_id = (client: WebSocket, order_id: strin
 export const request_open_order = (
   client: WebSocket,
   { direction, amount, type, price, instrument_name, time_in_force }: OrderParams,
-): {id: string, msg: any} => {
+): { id: string; msg: any } => {
   const id = generate_random_id();
   const params = {
     instrument_name,
@@ -109,5 +112,5 @@ export const request_open_order = (
     time_in_force,
   };
   const msg = custom_request(client, `private/${direction}`, `o/${id}`, params);
-  return {id, msg};
+  return { id, msg };
 };

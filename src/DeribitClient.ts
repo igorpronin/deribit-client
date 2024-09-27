@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import EventEmitter from 'events';
-import { is_value_in_enum, remove_elements_from_existing_array } from '@igorpronin/utils';
+import { is_value_in_enum } from '@igorpronin/utils';
 import {
   create_to_console,
   create_init_pending_subscriptions_check,
@@ -20,7 +20,6 @@ import {
   Currencies,
   IDs,
   PrivateSubscriptions,
-  PublicMethods,
   RpcAuthMsg,
   RpcError,
   RpcMessage,
@@ -45,13 +44,13 @@ import {
   RpcSubscriptionMessage,
 } from './types';
 import {
-  request_get_account_summary,
-  request_get_account_summaries,
-  request_get_positions,
-  request_open_order,
-  request_subscribe,
-  custom_request,
-} from './rpc_requests';
+  create_process_subscribe_on_requested_and_obligatory,
+  create_process_get_positions,
+  create_process_get_account_summaries_by_tickers,
+  create_process_get_account_summaries,
+  create_process_request_obligatory_data,
+  create_process_open_order,
+} from './deribit_client_methods/actions';
 import {
   create_handle_rpc_error_response,
   create_handle_rpc_subscription_message,
@@ -201,6 +200,15 @@ export class DeribitClient {
   private handle_open_order_message: (msg: RpcOpenOrderMsg) => void;
   // End of Message handlers
 
+  // Actions
+  private process_subscribe_on_requested_and_obligatory: () => void;
+  private process_get_positions: () => void;
+  private process_get_account_summaries_by_tickers: () => void;
+  private process_get_account_summaries: () => void;
+  private process_request_obligatory_data: () => void;
+  public process_open_order: (params: OrderParams) => string;
+  // End of Actions
+
   // Subscriptions and obligatory data
   private requested_subscriptions: Subscriptions[] = [];
   private obligatory_subscriptions: Subscriptions[] = [PrivateSubscriptions.ChangesAnyAny];
@@ -287,6 +295,17 @@ export class DeribitClient {
     this.handle_open_order_message = create_handle_open_order_message(this);
     // End of Applying message handlers
 
+    // Applying actions
+    this.process_subscribe_on_requested_and_obligatory =
+      create_process_subscribe_on_requested_and_obligatory(this);
+    this.process_get_positions = create_process_get_positions(this);
+    this.process_get_account_summaries_by_tickers =
+      create_process_get_account_summaries_by_tickers(this);
+    this.process_get_account_summaries = create_process_get_account_summaries(this);
+    this.process_request_obligatory_data = create_process_request_obligatory_data(this);
+    this.process_open_order = create_process_open_order(this);
+    // End of Applying actions
+
     if (params.instance_id) {
       this.msg_prefix = `[Deribit client (${params.instance_id})]`;
     }
@@ -355,80 +374,6 @@ export class DeribitClient {
     this.client.on('error', this.on_error);
   }
 
-  private process_subscribe_on_requested_and_obligatory = () => {
-    if (!this.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    this.requested_subscriptions.forEach((subscription) => {
-      this.to_console(`Subscribing on ${subscription}...`);
-      request_subscribe(this.client, subscription);
-      this.pending_subscriptions.push(subscription);
-    });
-    this.obligatory_subscriptions.forEach((subscription) => {
-      this.to_console(`Subscribing on ${subscription}...`);
-      request_subscribe(this.client, subscription);
-      this.pending_subscriptions.push(subscription);
-    });
-  };
-
-  private process_get_positions = () => {
-    if (!this.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    this.to_console(`Requesting positions...`);
-    request_get_positions(this.client);
-  };
-
-  private process_get_account_summaries_by_tickers = () => {
-    if (!this.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    this.currencies.forEach((currency) => {
-      this.to_console(`Getting account summary for currency ${currency}...`);
-      request_get_account_summary(this.client, currency);
-    });
-  };
-
-  private process_get_account_summaries = () => {
-    if (!this.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    this.to_console(`Getting account summaries...`);
-    request_get_account_summaries(this.client);
-  };
-
-  private process_request_obligatory_data = () => {
-    this.to_console(`Requesting obligatory data...`);
-
-    this.to_console(`Requesting future instruments...`);
-    this.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentFuture);
-    custom_request(this.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentFuture, {
-      currency: 'any',
-      kind: 'future',
-    });
-
-    this.to_console(`Requesting options instruments...`);
-    this.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentOptions);
-    custom_request(this.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentOptions, {
-      currency: 'any',
-      kind: 'option',
-    });
-
-    this.to_console(`Requesting spot instruments...`);
-    this.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentSpot);
-    custom_request(this.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentSpot, {
-      currency: 'any',
-      kind: 'spot',
-    });
-
-    this.to_console(`Requesting currencies...`);
-    this.obligatory_data_pending.push(IDs.GetCurrencies);
-    custom_request(this.client, 'public/get_currencies', IDs.GetCurrencies, {});
-
-    this.obligatory_data_pending.push(IDs.GetPositions);
-    this.process_get_positions();
-  };
-
   public get_configuration = () => {
     return {
       api_env: this.api_env,
@@ -467,27 +412,6 @@ export class DeribitClient {
 
   public get_calculated_ticker_data = (instrument_name: string) =>
     this.ticker_data[instrument_name]?.calculated;
-
-  public open_order = (params: OrderParams): string => {
-    if (!this.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    if (!this.is_instance_ready) {
-      throw new Error('Instance is not ready');
-    }
-    const {id} = request_open_order(this.client, params);
-    this.orders.pending_orders_amount++;
-    const order_data = {
-      initial: params,
-      is_pending: true,
-      is_error: false,
-      order_rpc_message_results: [],
-      state: null,
-    };
-    this.orders.all[id] = order_data;
-    this.orders.list.push(order_data);
-    return id;
-  };
 
   public get_positions = () => this.positions;
 
