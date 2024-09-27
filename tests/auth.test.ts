@@ -10,8 +10,6 @@ const client = new DeribitClient({
   api_env: 'prod',
   api_key: api_key as string,
   client_id: client_id as string,
-  currencies: [],
-  subscriptions: [],
   on_message: (msg) => {},
 });
 

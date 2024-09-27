@@ -1,109 +1,71 @@
 import {
   custom_request,
-  request_subscribe,
   request_get_positions,
-  request_get_account_summary,
   request_get_account_summaries,
   request_open_order,
 } from '../rpc_requests';
-import { Subscriptions, Currencies, GetInstrumentIDs, IDs, OrderParams } from '../types';
+import { GetInstrumentID, IDs, Kinds, OrderParams } from '../types/types';
+import { DeribitClient } from '../DeribitClient';
+import { to_console } from './utils';
 
-// Private
-export function create_process_subscribe_on_requested_and_obligatory(context: any) {
-  return () => {
-    if (!context.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    context.requested_subscriptions.forEach((subscription: string) => {
-      context.to_console(`Subscribing on ${subscription}...`);
-      request_subscribe(context.client, subscription as Subscriptions);
-      context.pending_subscriptions.push(subscription);
-    });
-    context.obligatory_subscriptions.forEach((subscription: string) => {
-      context.to_console(`Subscribing on ${subscription}...`);
-      request_subscribe(context.client, subscription as Subscriptions);
-      context.pending_subscriptions.push(subscription);
-    });
-  };
+export function process_get_positions(context: DeribitClient) {
+  if (!context.auth_data.state) {
+    throw new Error('Not authorized');
+  }
+  to_console(context, 'Requesting positions...');
+  const { id } = request_get_positions(context.client);
+  return id;
 }
 
-// Private
-export function create_process_get_positions(context: any) {
-  return () => {
-    if (!context.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    context.to_console(`Requesting positions...`);
-    request_get_positions(context.client);
-  };
+export function process_get_account_summaries(context: DeribitClient) {
+  if (!context.auth_data.state) {
+    throw new Error('Not authorized');
+  }
+  to_console(context, 'Getting account summaries...');
+  const { id } = request_get_account_summaries(context.client);
+  return id;
 }
 
-// Private
-export function create_process_get_account_summaries_by_tickers(context: any) {
-  return () => {
-    if (!context.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    context.currencies.forEach((currency: string) => {
-      context.to_console(`Getting account summary for currency ${currency}...`);
-      request_get_account_summary(context.client, currency as Currencies);
-    });
-  };
+export function process_get_instruments_list(context: DeribitClient, kind: Kinds): GetInstrumentID {
+  to_console(context, `Requesting ${kind} instruments...`);
+  let id = `get_instruments/${kind}` as GetInstrumentID;
+  custom_request(context.client, 'public/get_instruments', id, {
+    currency: 'any',
+    kind,
+  });
+  return id;
 }
 
-// Private
-export function create_process_get_account_summaries(context: any) {
-  return () => {
-    if (!context.auth_data.state) {
-      throw new Error('Not authorized');
-    }
-    context.to_console(`Getting account summaries...`);
-    request_get_account_summaries(context.client);
-  };
+export function process_get_currencies(context: DeribitClient) {
+  to_console(context, 'Requesting currencies...');
+  const { id } = custom_request(context.client, 'public/get_currencies', IDs.GetCurrencies, {});
+  return id;
 }
 
-// Private
-export function create_process_request_obligatory_data(context: any) {
-  return () => {
-    context.to_console(`Requesting obligatory data...`);
+export function process_request_obligatory_data(context: DeribitClient) {
+  to_console(context, 'Requesting obligatory initial data...');
 
-    context.to_console(`Requesting future instruments...`);
-    context.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentFuture);
-    custom_request(context.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentFuture, {
-      currency: 'any',
-      kind: 'future',
-    });
+  const account_summaries_id = process_get_account_summaries(context);
+  context.obligatory_data_pending.push(account_summaries_id);
 
-    context.to_console(`Requesting options instruments...`);
-    context.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentOptions);
-    custom_request(
-      context.client,
-      'public/get_instruments',
-      GetInstrumentIDs.GetInstrumentOptions,
-      {
-        currency: 'any',
-        kind: 'option',
-      },
-    );
+  const positions_id = process_get_positions(context);
+  context.obligatory_data_pending.push(positions_id);
 
-    context.to_console(`Requesting spot instruments...`);
-    context.obligatory_data_pending.push(GetInstrumentIDs.GetInstrumentSpot);
-    custom_request(context.client, 'public/get_instruments', GetInstrumentIDs.GetInstrumentSpot, {
-      currency: 'any',
-      kind: 'spot',
-    });
+  const currencies_id = process_get_currencies(context);
+  context.obligatory_data_pending.push(currencies_id);
 
-    context.to_console(`Requesting currencies...`);
-    context.obligatory_data_pending.push(IDs.GetCurrencies);
-    custom_request(context.client, 'public/get_currencies', IDs.GetCurrencies, {});
+  const future_id = process_get_instruments_list(context, 'future');
+  context.obligatory_data_pending.push(future_id);
 
-    context.obligatory_data_pending.push(IDs.GetPositions);
-    context.process_get_positions();
-  };
+  const options_id = process_get_instruments_list(context, 'option');
+  context.obligatory_data_pending.push(options_id);
+
+  const spot_id = process_get_instruments_list(context, 'spot');
+  context.obligatory_data_pending.push(spot_id);
 }
 
-// public
-export function create_process_open_order(context: any) {
+// Public method, calls from DeribitClient class
+export function create_process_open_order(context: DeribitClient) {
   return (params: OrderParams): string => {
     if (!context.auth_data.state) {
       throw new Error('Not authorized');

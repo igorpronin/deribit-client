@@ -10,7 +10,7 @@ import {
   Subscriptions,
   OrderParams,
   PublicSubscriptionPrefix,
-} from './types';
+} from './types/types';
 import { starts_with_prefix } from './helpers';
 import { is_value_in_enum, generate_random_id } from '@igorpronin/utils';
 
@@ -28,26 +28,24 @@ export const custom_request = (client: WebSocket, method: string, id: string, pa
 export const request_subscribe = (
   client: WebSocket,
   subscription: Subscriptions,
-): { msg: any; subscription: Subscriptions } => {
+): { id: string; msg: any; subscription: Subscriptions } => {
   let method: PublicMethods | PrivateMethods = PublicMethods.PublicSubscribe;
   if (is_value_in_enum(subscription, PrivateSubscriptions)) {
     method = PrivateMethods.PrivateSubscribe;
   }
+  const id = `s/${subscription}`;
   const msg = custom_request(client, method, `s/${subscription}`, {
     channels: [subscription],
   });
-  return { msg, subscription };
-};
-
-export const requests_subscribe_to_portfolio = (client: WebSocket, currencies: Currencies[]) => {
-  currencies.forEach((currency) => {
-    request_subscribe(client, `user.portfolio.${currency}` as Subscriptions);
-  });
+  return { id, msg, subscription };
 };
 
 // https://docs.deribit.com/#private-get_account_summary
 // To read subaccount summary use subaccount_id parameter (not implemented yet)
-export const request_get_account_summary = (client: WebSocket, currency: Currencies) => {
+export const request_get_account_summary = (
+  client: WebSocket,
+  currency: Currencies,
+): { id: string; msg: any } | undefined => {
   let id: AccSummaryIDs;
   switch (currency) {
     case Currencies.BTC:
@@ -69,31 +67,37 @@ export const request_get_account_summary = (client: WebSocket, currency: Currenc
     currency: currency,
     extended: true,
   });
-  return msg;
+  return { id, msg };
 };
 
 // https://docs.deribit.com/#private-get_account_summaries
-export const request_get_account_summaries = (client: WebSocket) => {
-  const msg = custom_request(client, PrivateMethods.AccountSummaries, IDs.AccSummaries, {
+export const request_get_account_summaries = (client: WebSocket): { id: string; msg: any } => {
+  const id = IDs.AccSummaries;
+  const msg = custom_request(client, PrivateMethods.AccountSummaries, id, {
     extended: true,
   });
-  return msg;
+  return { id, msg };
 };
 
 // https://docs.deribit.com/#private-get_positions
-export const request_get_positions = (client: WebSocket) => {
-  const msg = custom_request(client, PrivateMethods.GetPositions, IDs.GetPositions, {
+export const request_get_positions = (client: WebSocket): { id: string; msg: any } => {
+  const id = IDs.GetPositions;
+  const msg = custom_request(client, PrivateMethods.GetPositions, id, {
     currency: 'any',
   });
-  return msg;
+  return { id, msg };
 };
 
 // https://docs.deribit.com/#private-get_order_state
-export const request_get_order_state_by_id = (client: WebSocket, order_id: string) => {
-  const msg = custom_request(client, PrivateMethods.GetOrderState, IDs.GetOrderState, {
+export const request_get_order_state_by_id = (
+  client: WebSocket,
+  order_id: string,
+): { id: string; msg: any } => {
+  const id = IDs.GetOrderState;
+  const msg = custom_request(client, PrivateMethods.GetOrderState, id, {
     order_id,
   });
-  return msg;
+  return { id, msg };
 };
 
 // https://docs.deribit.com/#private-buy

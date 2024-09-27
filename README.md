@@ -57,8 +57,8 @@ Returns an array of pending subscriptions.
 #### get_active_subscriptions()
 Returns an array of active subscriptions.
 
-#### get_accounts_summary()
-Returns a summary of all accounts.
+#### get_account_summaries()
+Returns a summaries of account.
 
 #### get_portfolio_by_currency(currency: Currencies)
 Returns the portfolio for the specified currency.
@@ -74,9 +74,6 @@ Returns the current configuration of the client.
 
 #### get_index(index: Indexes)
 Returns the current index price for the specified currency pair.
-
-#### get_obligatory_data_state()
-Returns the state of the obligatory data.
 
 #### get_instruments(kind: Kinds)
 Returns the instruments for the specified kind.
