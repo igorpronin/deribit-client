@@ -62,10 +62,6 @@ client.ee.on('portfolio_updated', (ticker: Currencies) => console.log('Portfolio
 client.ee.on('position_updated', (instrument_name: string) => console.log('Position updated!', instrument_name));
 client.ee.on('index_updated', (pair: Indexes) => console.log('Index updated!', pair));
 client.ee.on('ticker_updated', (instrument_name: string) => console.log('Ticker updated!', instrument_name));
-client.ee.on('portfolio_updated', () => {
-  const acc_summary = client.get_accounts_summary();
-  console.log(acc_summary);
-});
 ```
 
 ## Public Methods
