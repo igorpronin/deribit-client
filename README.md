@@ -14,7 +14,6 @@ Deribit client for internal purposes
 import {
   DeribitClient,
   Currencies,
-  Indexes,
   Kinds,
 } from '@igorpronin/deribit-client';
 
@@ -25,7 +24,7 @@ const client = new DeribitClient({
   output_console: true, // optional, defaults to true
   
   // at least one of two options (indexes or instruments) required and shouldn't be empty:
-  indexes: [Indexes.BtcUsd, Indexes.EthUsd], // optional
+  indexes: ['eth_usd', 'btc_usd'], // optional
   instruments: ['BTC-PERPETUAL', 'ETH-PERPETUAL'], // optional
 
   on_open: () => console.log('WebSocket opened'),
