@@ -14,7 +14,7 @@ import {
   RpcGetInstrumentsMsg,
 } from '../types/types';
 import { Indexes, TickerData } from '../types/deribit_objects';
-import { calculate_future_apr_and_premium } from '../helpers';
+import { calculate_future_apr_and_premium, calculate_premium } from '../helpers';
 import { DeribitClient } from '../DeribitClient';
 import {
   process_request_obligatory_data,
@@ -32,7 +32,6 @@ import {
 } from './message_handlers';
 import {
   to_console,
-  // validate_if_instance_is_ready,
   init_pending_subscriptions_check,
   hadle_opligatory_data_status,
   is_instruments_list_ready,
@@ -152,6 +151,16 @@ export function handle_rpc_subscription_message(
         expiration_timestamp:
           context.deribit_instruments_by_name[instrument_name].expiration_timestamp,
       });
+    }
+    if (
+      raw_data.funding_8h !== undefined &&
+      context.ticker_data[instrument_name].raw.index_price !== undefined &&
+      context.ticker_data[instrument_name].raw.mark_price !== undefined
+    ) {
+      context.ticker_data[instrument_name].calculated = calculate_premium(
+        context.ticker_data[instrument_name].raw.index_price,
+        context.ticker_data[instrument_name].raw.mark_price,
+      );
     }
 
     context.ee.emit('ticker_updated', instrument_name);

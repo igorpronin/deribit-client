@@ -18,8 +18,14 @@ export const calculate_future_apr_and_premium = (params: Params) => {
   const time_to_expiration_in_minutes = time_to_expiration / (1000 * 60);
 
   const apr = ((mark_price / index_price - 1) * 525600) / time_to_expiration_in_minutes;
+  const { premium_absolute, premium_relative } = calculate_premium(index_price, mark_price);
+
+  return { time_to_expiration_in_minutes, apr, premium_absolute, premium_relative };
+};
+
+export const calculate_premium = (index_price: number, mark_price: number) => {
   const premium_absolute = mark_price - index_price;
   const premium_relative = premium_absolute / index_price;
 
-  return { time_to_expiration_in_minutes, apr, premium_absolute, premium_relative };
+  return { premium_absolute, premium_relative };
 };

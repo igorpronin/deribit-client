@@ -62,8 +62,8 @@ type Params = {
 type TickerFullData = {
   raw: TickerData;
   calculated: {
-    time_to_expiration_in_minutes: number | null;
-    apr: number | null;
+    time_to_expiration_in_minutes?: number | null;
+    apr?: number | null;
     premium_absolute: number | null;
     premium_relative: number | null;
   };
