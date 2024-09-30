@@ -10,31 +10,51 @@ Deribit client for internal purposes
 
 ## Usage
 
-```javascript
+```typescript
 import {
   DeribitClient,
-  PublicSubscriptions,
-  PrivateSubscriptions,
   Currencies,
+  Indexes,
+  Kinds,
 } from '@igorpronin/deribit-client';
 
 const client = new DeribitClient({
-  api_env: 'prod' as 'prod' | 'test',
-  api_key: DERIBIT_API_KEY,
-  client_id: DERIBIT_API_CLIENT_ID,
-  currencies: [Currencies.BTC, Currencies.USDT],
-  instance_id: account.instance_id, // optional
-  on_message: (msg) => {console.log(msg)},
-  subscriptions: [
-    PublicSubscriptions.IndexPriceBtcUsd,
-    PrivateSubscriptions.PortfolioBtc,
-  ]
-})
+  api_env: 'prod',
+  api_key: 'YOUR_DERIBIT_API_KEY',
+  client_id: 'YOUR_DERIBIT_CLIENT_ID',
+  output_console: true, // optional, defaults to true
+  
+  // at least one of two options (indexes or instruments) required and shouldn't be empty:
+  indexes: [Indexes.BtcUsd, Indexes.EthUsd], // optional
+  instruments: ['BTC-PERPETUAL', 'ETH-PERPETUAL'], // optional
+
+  on_open: () => console.log('WebSocket opened'),
+  on_close: () => console.log('WebSocket closed'),
+  on_error: (error) => console.error('WebSocket error:', error),
+  on_message: (msg) => console.log('Received message:', msg),
+});
+```
+
+## Open orders
+
+```typescript
+// Example of opening an order
+const order_params = {
+  instrument_name: 'BTC-PERPETUAL',
+  amount: 100,
+  type: 'limit',
+  price: 50000,
+  post_only: true,
+  // Add other necessary parameters
+};
+
+const order_id = client.process_open_order(order_params);
+console.log('New order ID:', order_id);
 ```
 
 ## Events
 
-```javascript
+```typescript
 client.ee.on('authorized', () => console.log('Authorized!'));  
 client.ee.on('subscribed', (msg: any) => console.log('Subscribed!', msg));
 client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
@@ -51,6 +71,12 @@ client.ee.on('portfolio_updated') => {
 
 ## Public Methods
 
+#### get_configuration()
+Returns the current configuration of the client.
+
+#### get_index(index: Indexes)
+Returns the current index price for the specified currency pair.
+
 #### get_pending_subscriptions()
 Returns an array of pending subscriptions.
 
@@ -58,52 +84,37 @@ Returns an array of pending subscriptions.
 Returns an array of active subscriptions.
 
 #### get_account_summaries()
-Returns a summaries of account.
+Returns summaries of all accounts.
 
-#### get_portfolio_by_currency(currency: Currencies)
-Returns the portfolio for the specified currency.
+#### get_deribit_instruments(kind: Kinds)
+Returns the instruments for the specified kind.
+
+#### get_deribit_instrument_by_name(instrument_name: string)
+Returns the instrument for the specified name.
+
+#### get_deribit_currencies_list()
+Returns the list of currencies supported by Deribit.
+
+#### get_ticker_data(instrument_name: string)
+Returns the full ticker data (raw and calculated) for the specified instrument.
+
+#### get_raw_ticker_data(instrument_name: string)
+Returns the raw ticker data for the specified instrument.
+
+#### get_calculated_ticker_data(instrument_name: string)
+Returns the calculated ticker data for the specified instrument.
+
+#### get_positions()
+Returns all positions.
+
+#### get_position_by_instrument_name(instrument_name: string)
+Returns the position for the specified instrument.
 
 #### has_pending_orders()
 Returns a boolean indicating whether there are any pending orders.
 
 #### process_open_order(params: OrderParams)
 Opens a new order with the specified parameters.
-
-#### get_configuration()
-Returns the current configuration of the client.
-
-#### get_index(index: Indexes)
-Returns the current index price for the specified currency pair.
-
-#### get_instruments(kind: Kinds)
-Returns the instruments for the specified kind.
-
-#### get_deribit_currencies_list()
-Returns the list of currencies supported by Deribit.
-
-#### get_ticker_data(instrument_name: string)
-Returns the ticker data for the specified instrument.
-
-#### get_raw_ticker_data(instrument_name: string)
-Returns the raw ticker data for the specified instrument.
-
-#### get_deribit_instrument_by_name(instrument_name: string)
-Returns the instrument for the specified kind and name.
-
-#### get_calculated_ticker_data(instrument_name: string)
-Returns the calculated ticker data for the specified instrument.
-
-#### get_deribit_instruments(kind: Kinds)
-Returns the instruments for the specified kind.
-
-#### get_calculated_ticker_data(instrument_name: string)
-Returns the calculated ticker data for the specified instrument.
-
-#### get_positions()
-Returns the positions for the specified currency.
-
-#### get_position_by_instrument_name(instrument_name: string)
-Returns the position for the specified instrument.
 
 ## Contacts
 
