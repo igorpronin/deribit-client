@@ -41,10 +41,10 @@ const client = new DeribitClient({
 const order_params = {
   instrument_name: 'BTC-PERPETUAL',
   amount: 100,
-  type: 'limit',
+  type: OrderType.limit,
   price: 50000,
-  post_only: true,
-  // Add other necessary parameters
+  time_in_force: TimeInForce.GTC,
+  direction: 'buy',
 };
 
 const order_id = client.process_open_order(order_params);
