@@ -21,6 +21,7 @@ const client = new DeribitClient({
   api_env: 'prod',
   api_key: 'YOUR_DERIBIT_API_KEY',
   client_id: 'YOUR_DERIBIT_CLIENT_ID',
+  instance_id: 'YOUR_INSTANCE_ID', // optional
   output_console: true, // optional, defaults to true
   
   // at least one of two options (indexes or instruments) required and shouldn't be empty:
@@ -47,8 +48,8 @@ const order_params = {
   direction: 'buy',
 };
 
-const order_id = client.process_open_order(order_params);
-console.log('New order ID:', order_id);
+const { id, msg } = client.process_open_order(order_params);
+console.log('New order ID:', id);
 ```
 
 ## Events
