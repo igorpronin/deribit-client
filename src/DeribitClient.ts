@@ -7,6 +7,7 @@ import {
   OrderParams,
   OrderData,
   Kinds,
+  SpotInstrument,
   RpcErrorResponse,
   RpcSuccessResponse,
   RpcSubscriptionMessage,
@@ -26,7 +27,7 @@ import {
 } from './deribit_client_methods/root_handlers';
 import { create_process_open_order } from './deribit_client_methods/actions';
 import { auth } from './deribit_client_methods/auth_requests_and_handlers';
-import { validate_user_requests } from './deribit_client_methods/utils';
+import { validate_user_requests, to_console } from './deribit_client_methods/utils';
 
 type AuthData = {
   state: boolean;
@@ -127,16 +128,6 @@ export class DeribitClient {
       raw: null,
     },
   };
-  /*
-   * Instance is ready when all obligatory data is received
-   * and all subscriptions are active (not pending or requested)
-   *
-   * All the arrays (requested_subscriptions, obligatory_subscriptions, pending_subscriptions,
-   * obligatory_data) are used for the checks and should be empty when instance is ready
-   *
-   * Trade operations are not allowed when instance is not ready
-   */
-  public is_instance_ready: boolean = false;
   // End of Auth and connection data
 
   // Actions
@@ -166,7 +157,10 @@ export class DeribitClient {
 
   public deribit_instruments_list: Partial<Record<Kinds, Instrument[]>> = {};
 
-  public deribit_instruments_by_name: Record<string, Instrument> = {};
+  public deribit_instruments_by_name: Record<string, Instrument | SpotInstrument> = {
+    BTC_USDC: { kind: 'spot' }, // Added manually, cause endpoint https://docs.deribit.com/#public-get_instrument doesn't return spot instruments
+    BTC_USDT: { kind: 'spot' }, // Added manually, cause endpoint https://docs.deribit.com/#public-get_instrument doesn't return spot instruments
+  };
 
   public ticker_data: Record<string, TickerFullData> = {};
 
@@ -248,6 +242,9 @@ export class DeribitClient {
         on_message(parsed as RpcMessage);
         return;
       }
+
+      to_console(this, 'Unhandled message:', parsed);
+      on_message(parsed as RpcMessage);
     };
 
     this.client.on('close', this.on_close);
@@ -265,7 +262,6 @@ export class DeribitClient {
       username: this.username,
       acc_type: this.acc_type,
       user_id: this.user_id,
-      is_instance_ready: this.is_instance_ready,
     };
   };
 

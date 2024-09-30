@@ -12,6 +12,7 @@ import {
   RpcGetPositionsMsg,
   Currencies,
   RpcGetInstrumentsMsg,
+  Instrument,
 } from '../types/types';
 import { Indexes, TickerData } from '../types/deribit_objects';
 import { calculate_future_apr_and_premium, calculate_premium } from '../helpers';
@@ -20,6 +21,7 @@ import {
   process_request_obligatory_data,
   process_subscribe_requested_indexes,
   process_subscribe_requested_instruments,
+  process_request_obligatory_subscriptions,
 } from './actions';
 import { handle_auth_message } from './auth_requests_and_handlers';
 import {
@@ -54,6 +56,7 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
   if (id === IDs.Auth) {
     handle_auth_message(context, msg as RpcAuthMsg, false);
     process_request_obligatory_data(context);
+    process_request_obligatory_subscriptions(context); // TODO: not implemented yet
     process_subscribe_requested_indexes(context);
     init_pending_subscriptions_check(context);
     return;
@@ -79,6 +82,8 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
   }
 
   if (id === IDs.AccSummaries) {
+    // console.log('AccSummaries');
+    // console.log(msg);
     hadle_opligatory_data_status(context, id);
     handle_get_account_summaries_message(context, msg as RpcAccSummariesMsg);
     return;
@@ -92,6 +97,8 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
   }
 
   if (id === IDs.GetPositions) {
+    // console.log('GetPositions');
+    // console.log(msg);
     hadle_opligatory_data_status(context, id);
     handle_get_positions_message(context, msg as RpcGetPositionsMsg);
     // validate_if_instance_is_ready(context);
@@ -141,15 +148,18 @@ export function handle_rpc_subscription_message(
     }
 
     const raw_data = data as unknown as TickerData;
-    context.ticker_data[instrument_name].raw = raw_data;
+    const instrument = context.deribit_instruments_by_name[instrument_name] as Instrument;
 
-    if (raw_data.funding_8h === undefined) {
+    if (
+      instrument &&
+      raw_data.funding_8h === undefined &&
+      instrument.expiration_timestamp
+    ) {
       context.ticker_data[instrument_name].calculated = calculate_future_apr_and_premium({
         index_price: context.ticker_data[instrument_name].raw.index_price,
         mark_price: context.ticker_data[instrument_name].raw.mark_price,
         timestamp: context.ticker_data[instrument_name].raw.timestamp,
-        expiration_timestamp:
-          context.deribit_instruments_by_name[instrument_name].expiration_timestamp,
+        expiration_timestamp: instrument.expiration_timestamp,
       });
     }
     if (

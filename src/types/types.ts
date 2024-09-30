@@ -183,12 +183,14 @@ export interface RpcAccSummaryMsg extends RpcSuccessResponse {
   result: AccountSummary;
 }
 
+// https://docs.deribit.com/#private-get_account_summaries
 export interface RpcAccSummariesMsg extends RpcSuccessResponse {
   id: IDs.AccSummaries;
   result: {
     id: number;
     username: string;
     type: string;
+    summaries: AccountSummary[];
   };
 }
 

@@ -150,6 +150,13 @@ export interface TickerData {
   best_ask_amount: number;
 }
 
+// Warning:
+// endpoint https://docs.deribit.com/#public-get_instrument
+// doesn't return spot instruments
+export interface SpotInstrument {
+  kind: 'spot';
+}
+
 // https://docs.deribit.com/#public-get_instrument
 export interface Instrument {
   tick_size: number;

@@ -33,6 +33,9 @@ export function handle_get_account_summaries_message(
   context.username = msg.result.username;
   context.acc_type = msg.result.type;
   context.user_id = msg.result.id;
+  msg.result.summaries.forEach((summary) => {
+    context.account_summaries[summary.currency] = summary;
+  });
   to_console(context, `Received: account summaries`);
 }
 

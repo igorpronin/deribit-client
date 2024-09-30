@@ -1,9 +1,9 @@
-import { RpcError } from '../types/types';
+import { RpcError, RpcMessage } from '../types/types';
 import { DeribitClient } from '../DeribitClient';
 import { remove_elements_from_existing_array } from '@igorpronin/utils';
 import { re_auth } from './auth_requests_and_handlers';
 
-export function to_console(context: DeribitClient, msg: string, error?: RpcError) {
+export function to_console(context: DeribitClient, msg: string, error?: RpcError | RpcMessage) {
   if (error) {
     console.error(error);
   }
@@ -64,6 +64,9 @@ export function hadle_opligatory_data_status(context: DeribitClient, id: string)
   remove_elements_from_existing_array(context.obligatory_data_pending, id);
   if (!context.obligatory_data_received.includes(id)) {
     context.obligatory_data_received.push(id);
+  }
+  if (context.obligatory_data_pending.length === 0) {
+    context.ee.emit('all_obligatory_data_received');
   }
 }
 

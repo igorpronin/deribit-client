@@ -42,6 +42,11 @@ export function process_subscribe_requested_instruments(context: DeribitClient) 
   });
 }
 
+export function process_request_obligatory_subscriptions(context: DeribitClient) {
+  // TODO: subscribe on user.changes https://docs.deribit.com/#user-changes-instrument_name-interval
+  // for user choosen instruments
+}
+
 export function process_get_positions(context: DeribitClient) {
   if (!context.auth_data.state) {
     throw new Error('Not authorized');
@@ -103,9 +108,6 @@ export function create_process_open_order(context: DeribitClient) {
   return (params: OrderParams): string => {
     if (!context.auth_data.state) {
       throw new Error('Not authorized');
-    }
-    if (!context.is_instance_ready) {
-      throw new Error('Instance is not ready');
     }
     const { id } = request_open_order(context.client, params);
     context.orders.pending_orders_amount++;
