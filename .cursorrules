@@ -1,0 +1,7 @@
+# Set up project-specific settings
+settings:
+  tabSize: 2
+  insertSpaces: true
+  trimTrailingWhitespace: true
+  indentStyle: space
+  indentSize: 2
