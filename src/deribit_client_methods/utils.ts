@@ -65,11 +65,15 @@ export function init_pending_subscriptions_check(context: DeribitClient) {
 }
 
 export function hadle_opligatory_data_status(context: DeribitClient, id: string) {
+  if (context.is_obligatory_data_received) {
+    return;
+  }
   remove_elements_from_existing_array(context.obligatory_data_pending, id);
   if (!context.obligatory_data_received.includes(id)) {
     context.obligatory_data_received.push(id);
   }
-  if (context.obligatory_data_pending.length === 0) {
+  if (context.obligatory_data_pending.length === 0 && !context.is_obligatory_data_received) {
+    context.is_obligatory_data_received = true;
     context.ee.emit('all_obligatory_data_received');
   }
 }

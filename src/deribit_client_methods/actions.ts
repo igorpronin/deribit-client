@@ -43,8 +43,7 @@ export function process_subscribe_requested_instruments(context: DeribitClient) 
 }
 
 export function process_request_obligatory_subscriptions(context: DeribitClient) {
-  // TODO: subscribe on user.changes https://docs.deribit.com/#user-changes-instrument_name-interval
-  // for user choosen instruments
+  process_subscribe(context, 'user.changes.any.any.raw');
 }
 
 export function process_get_positions(context: DeribitClient) {
@@ -120,6 +119,7 @@ export function create_process_open_order(context: DeribitClient) {
       is_error: false,
       order_rpc_message_results: [],
       state: null,
+      trades: [],
     };
     context.orders.all[id] = order_data;
     context.orders.list.push(order_data);

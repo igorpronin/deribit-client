@@ -85,4 +85,8 @@ export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOr
   if (order_data.state === 'open' && is_closing_states) {
     order_data.state = order_state;
   }
+  context.ee.emit('order_updated', order_id);
+  if (order_state === 'filled') {
+    context.ee.emit('order_filled', order_id);
+  }
 }

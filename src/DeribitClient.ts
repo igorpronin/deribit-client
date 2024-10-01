@@ -13,6 +13,7 @@ import {
   RpcSubscriptionMessage,
   ScopeTitle,
   Scope,
+  UserChanges,
 } from './types/types';
 import {
   AccountSummary,
@@ -21,6 +22,7 @@ import {
   CurrencyData,
   TickerData,
   Position,
+  Trade,
 } from './types/deribit_objects';
 import {
   handle_rpc_error_response,
@@ -145,6 +147,7 @@ export class DeribitClient {
   public subscriptions_active: string[] = [];
   public obligatory_data_pending: string[] = [];
   public obligatory_data_received: string[] = [];
+  public is_obligatory_data_received: boolean = false;
   // End of Subscriptions and obligatory data
 
   // Other
@@ -154,6 +157,10 @@ export class DeribitClient {
     list: [],
     by_ref_id: {},
   };
+
+  public trades: Trade[] = [];
+
+  public user_changes: UserChanges[] = [];
 
   public account_summaries: Partial<Record<Currencies, AccountSummary>> = {};
 
@@ -258,7 +265,7 @@ export class DeribitClient {
         }
       }
 
-      to_console(this, 'Unhandled message:', parsed);
+      to_console(this, 'Unhandled message', parsed);
       on_message(parsed as RpcMessage);
     };
 
@@ -286,7 +293,13 @@ export class DeribitClient {
 
   public get_active_subscriptions = () => this.subscriptions_active;
 
+  public get_obligatory_data_pending = () => this.obligatory_data_pending;
+
+  public get_obligatory_data_received = () => this.obligatory_data_received;
+
   public get_account_summaries = () => this.account_summaries;
+
+  public get_positions = () => this.positions;
 
   public get_deribit_instruments = (kind: Kinds) => this.deribit_instruments_list[kind];
 
@@ -302,12 +315,12 @@ export class DeribitClient {
   public get_calculated_ticker_data = (instrument_name: string) =>
     this.ticker_data[instrument_name]?.calculated;
 
-  public get_positions = () => this.positions;
-
   public get_position_by_instrument_name = (instrument_name: string) =>
     this.positions[instrument_name];
 
   public get_orders = () => this.orders;
+
+  public get_trades = () => this.trades;
 
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 }

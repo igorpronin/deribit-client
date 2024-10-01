@@ -13,6 +13,7 @@ import {
   Currencies,
   RpcGetInstrumentsMsg,
   Instrument,
+  UserChanges,
 } from '../types/types';
 import { Indexes, TickerData } from '../types/deribit_objects';
 import { calculate_future_apr_and_premium, calculate_premium } from '../helpers';
@@ -22,6 +23,8 @@ import {
   process_subscribe_requested_indexes,
   process_subscribe_requested_instruments,
   process_request_obligatory_subscriptions,
+  process_get_positions,
+  process_get_account_summaries,
 } from './actions';
 import { handle_auth_message } from './auth_requests_and_handlers';
 import {
@@ -80,6 +83,8 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
 
   if (id.startsWith('o/')) {
     handle_open_order_message(context, msg as RpcOpenOrderMsg);
+    process_get_account_summaries(context);
+    process_get_positions(context);
     return true;
   }
 
@@ -169,7 +174,7 @@ export function handle_rpc_subscription_message(
         expiration_timestamp: instrument.expiration_timestamp,
       });
     }
-    
+
     if (
       raw_data.funding_8h !== undefined &&
       context.ticker_data[instrument_name].raw.index_price !== undefined &&
@@ -186,13 +191,12 @@ export function handle_rpc_subscription_message(
   }
 
   if (channel.startsWith('user.changes')) {
-    const parts = channel.split('.');
-    // console.log(parts);
-    // console.log(data);
-    // this.portfolio[currency] = data as UserPortfolioByCurrency;
-    // this.ee.emit('portfolio_updated', currency);
-    
-    return false; // TODO Unhandled message yet, change it later
+    const changes = data as UserChanges;
+    const { trades } = changes;
+    context.user_changes.push(changes);
+    context.trades.push(...trades);
+    // TODO: handle orders and positions
+    return true;
   }
 
   // Unhandled message

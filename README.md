@@ -65,6 +65,8 @@ client.ee.once('index_updated', (pair: Indexes) => console.log('Index updated!',
 client.ee.on('ticker_updated', (instrument_name: string) => console.log('Ticker updated!', instrument_name));
 client.ee.once('ticker_updated', (instrument_name: string) => console.log('Ticker updated!', instrument_name));
 client.ee.on('all_obligatory_data_received', () => console.log('All obligatory data received!'));
+client.ee.on('order_updated', (order_id: string) => console.log('Order updated!', order_id));
+client.ee.on('order_filled', (order_id: string) => console.log('Order filled!', order_id));
 ```
 
 ## Public Methods
@@ -80,6 +82,12 @@ Returns an array of pending subscriptions.
 
 #### get_active_subscriptions()
 Returns an array of active subscriptions.
+
+#### get_obligatory_data_pending()
+Returns a boolean indicating whether obligatory data is pending.
+
+#### get_obligatory_data_received()
+Returns a boolean indicating whether obligatory data is received.
 
 #### get_account_summaries()
 Returns summaries of all accounts.
@@ -110,6 +118,9 @@ Returns the position for the specified instrument.
 
 #### get_orders()
 Returns all orders.
+
+#### get_trades()
+Returns all trades.
 
 #### has_pending_orders()
 Returns a boolean indicating whether there are any pending orders.

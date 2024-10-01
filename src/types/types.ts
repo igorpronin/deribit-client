@@ -33,7 +33,7 @@ export type PublicTickerSubscription = `ticker.${string}.raw`;
 export type PublicSubscription = PublicIndexSubscription | PublicTickerSubscription;
 
 // https://docs.deribit.com/#subscriptions
-export type PrivateSubscription = `user.portfolio.${CurrenciesLowerCase}`;
+export type PrivateSubscription = `user.portfolio.${CurrenciesLowerCase}` | 'user.changes.any.any.raw';
 
 // OrdersAnyAny = 'user.orders.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-orders-kind-currency-raw
 // ChangesAnyAny = 'user.changes.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-changes-kind-currency-interval
@@ -88,7 +88,7 @@ export type CurrenciesLowerCase =
 export type Kinds = 'future' | 'option' | 'spot' | 'future_combo' | 'option_combo';
 
 export type ScopeTitle = 'name' | 'connection' | 'trade' | 'wallet' | 'account' | 'custody';
-export type Scope = 'read_write' | 'read';
+export type Scope = 'read_write' | 'read' | 'none';
 
 export enum TimeInForce {
   GTC = 'good_til_cancelled', // default on Deribit
@@ -127,6 +127,7 @@ export interface OrderData {
   rpc_error_message?: RpcMsg;
   order_rpc_message_results: Order[];
   state: null | OrderStates;
+  trades: Trade[];
 }
 
 export type SubscriptionData = BTCIndexData | UserChanges | UserPortfolioByCurrency;
