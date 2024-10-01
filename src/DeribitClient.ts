@@ -11,6 +11,8 @@ import {
   RpcErrorResponse,
   RpcSuccessResponse,
   RpcSubscriptionMessage,
+  ScopeTitle,
+  Scope,
 } from './types/types';
 import {
   AccountSummary,
@@ -34,7 +36,9 @@ type AuthData = {
   refresh_token: null | string;
   access_token: null | string;
   expires_in: null | number;
+  trade_permit: boolean;
   scope: {
+    processed: Partial<Record<ScopeTitle, Scope>>;
     raw: null | string;
   };
 };
@@ -124,7 +128,9 @@ export class DeribitClient {
     refresh_token: null,
     access_token: null,
     expires_in: null,
+    trade_permit: false,
     scope: {
+      processed: {},
       raw: null,
     },
   };

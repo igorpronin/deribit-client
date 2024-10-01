@@ -87,6 +87,9 @@ export type CurrenciesLowerCase =
 
 export type Kinds = 'future' | 'option' | 'spot' | 'future_combo' | 'option_combo';
 
+export type ScopeTitle = 'name' | 'connection' | 'trade' | 'wallet' | 'account' | 'custody';
+export type Scope = 'read_write' | 'read';
+
 export enum TimeInForce {
   GTC = 'good_til_cancelled', // default on Deribit
   GTD = 'good_til_day',

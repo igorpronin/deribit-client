@@ -109,6 +109,9 @@ export function create_process_open_order(context: DeribitClient) {
     if (!context.auth_data.state) {
       throw new Error('Not authorized');
     }
+    if (!context.auth_data.trade_permit) {
+      throw new Error('Trade "read_write" scope is not granted');
+    }
     const { id } = request_open_order(context.client, params);
     context.orders.pending_orders_amount++;
     const order_data = {

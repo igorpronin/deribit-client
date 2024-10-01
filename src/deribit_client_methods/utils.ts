@@ -1,11 +1,15 @@
-import { RpcError, RpcMessage } from '../types/types';
+import { RpcError, RpcMessage, ScopeTitle, Scope } from '../types/types';
 import { DeribitClient } from '../DeribitClient';
 import { remove_elements_from_existing_array } from '@igorpronin/utils';
 import { re_auth } from './auth_requests_and_handlers';
 
-export function to_console(context: DeribitClient, msg: string, error?: RpcError | RpcMessage) {
+export function to_console(context: DeribitClient, msg: string, error?: RpcError | RpcMessage | boolean) {
   if (error) {
-    console.error(error);
+    console.error(`${context.msg_prefix} ${msg}`);
+    if (typeof error !== 'boolean') {
+      console.error('Error:');
+      console.error(error);
+    }
   }
   if (!context.output_console) {
     return;
@@ -80,4 +84,15 @@ export function validate_user_requests(context: DeribitClient) {
   if (no_indexes && no_instruments) {
     throw new Error('No indexes or instruments to monitor or trade');
   }
+}
+
+export function process_scope(context: DeribitClient, scope: string) {
+  const items = scope.split(' ');
+  items.forEach((item) => {
+    const parts = item.split(':');
+    context.auth_data.scope.processed[parts[0] as ScopeTitle] = parts[1] as Scope;
+    if (parts[0] === 'trade') {
+      context.auth_data.trade_permit = parts[1] === 'read_write';
+    }
+  });
 }

@@ -1,7 +1,7 @@
 import { IDs, PublicMethods, RpcAuthMsg } from '../types/types';
 import { custom_request } from '../rpc_requests';
 import { DeribitClient } from '../DeribitClient';
-import { to_console, count_refresh } from './utils';
+import { to_console, count_refresh, process_scope } from './utils';
 
 export function auth(context: DeribitClient) {
   to_console(
@@ -39,6 +39,17 @@ export function handle_auth_message(context: DeribitClient, msg: RpcAuthMsg, is_
   context.auth_data.expires_in = msg.result.expires_in;
   context.auth_data.scope.raw = msg.result.scope;
   context.refresh_counter_id = count_refresh(context);
+
+  process_scope(context, msg.result.scope);
+
+  if (context.auth_data.scope.processed.trade !== 'read_write') {
+    to_console(
+      context,
+      'Warning: Trade "read_write" scope is not granted, please set it in the API key settings if you want to be able to send orders',
+      true,
+    );
+  }
+
   if (!is_re_auth) {
     context.authorized_at = new Date();
     context.ee.emit('authorized');
