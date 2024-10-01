@@ -166,6 +166,8 @@ export class DeribitClient {
   public deribit_instruments_by_name: Record<string, Instrument | SpotInstrument> = {
     BTC_USDC: { kind: 'spot' }, // Added manually, cause endpoint https://docs.deribit.com/#public-get_instrument doesn't return spot instruments
     BTC_USDT: { kind: 'spot' }, // Added manually, cause endpoint https://docs.deribit.com/#public-get_instrument doesn't return spot instruments
+    ETH_USDC: { kind: 'spot' }, // Added manually, cause endpoint https://docs.deribit.com/#public-get_instrument doesn't return spot instruments
+    ETH_USDT: { kind: 'spot' }, // Added manually, cause endpoint https://docs.deribit.com/#public-get_instrument doesn't return spot instruments
   };
 
   public ticker_data: Record<string, TickerFullData> = {};
@@ -231,22 +233,29 @@ export class DeribitClient {
     };
     this.on_message = (message) => {
       const parsed: RpcMessage = JSON.parse(message);
+      let handled = false;
 
       if ('error' in parsed) {
-        handle_rpc_error_response(this, parsed as RpcErrorResponse);
-        return;
+        handled = handle_rpc_error_response(this, parsed as RpcErrorResponse);
+        if (handled) {
+          return;
+        }
       }
 
       if ('method' in parsed && parsed.method === 'subscription') {
-        handle_rpc_subscription_message(this, parsed as RpcSubscriptionMessage);
+        handled = handle_rpc_subscription_message(this, parsed as RpcSubscriptionMessage);
         on_message(parsed as RpcMessage);
-        return;
+        if (handled) {
+          return;
+        }
       }
 
       if ('result' in parsed) {
-        handle_rpc_success_response(this, parsed as RpcSuccessResponse);
+        handled = handle_rpc_success_response(this, parsed as RpcSuccessResponse);
         on_message(parsed as RpcMessage);
-        return;
+        if (handled) {
+          return;
+        }
       }
 
       to_console(this, 'Unhandled message:', parsed);
@@ -297,6 +306,8 @@ export class DeribitClient {
 
   public get_position_by_instrument_name = (instrument_name: string) =>
     this.positions[instrument_name];
+
+  public get_orders = () => this.orders;
 
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 }

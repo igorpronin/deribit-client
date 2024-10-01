@@ -61,7 +61,9 @@ client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
 client.ee.on('portfolio_updated', (ticker: Currencies) => console.log('Portfolio updated!', ticker));
 client.ee.on('position_updated', (instrument_name: string) => console.log('Position updated!', instrument_name));
 client.ee.on('index_updated', (pair: Indexes) => console.log('Index updated!', pair));
+client.ee.once('index_updated', (pair: Indexes) => console.log('Index updated!', pair));
 client.ee.on('ticker_updated', (instrument_name: string) => console.log('Ticker updated!', instrument_name));
+client.ee.once('ticker_updated', (instrument_name: string) => console.log('Ticker updated!', instrument_name));
 client.ee.on('all_obligatory_data_received', () => console.log('All obligatory data received!'));
 ```
 
@@ -105,6 +107,9 @@ Returns all positions.
 
 #### get_position_by_instrument_name(instrument_name: string)
 Returns the position for the specified instrument.
+
+#### get_orders()
+Returns all orders.
 
 #### has_pending_orders()
 Returns a boolean indicating whether there are any pending orders.

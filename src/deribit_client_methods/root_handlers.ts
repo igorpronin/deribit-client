@@ -48,6 +48,8 @@ export function handle_rpc_error_response(context: DeribitClient, msg: RpcErrorR
   if (code === 13004) {
     throw new Error(m);
   }
+
+  return false; // Unhandled message
 }
 
 export function handle_rpc_success_response(context: DeribitClient, msg: RpcSuccessResponse) {
@@ -59,12 +61,12 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
     process_request_obligatory_subscriptions(context); // TODO: not implemented yet
     process_subscribe_requested_indexes(context);
     init_pending_subscriptions_check(context);
-    return;
+    return true;
   }
 
   if (id === IDs.ReAuth) {
     handle_auth_message(context, msg as RpcAuthMsg, true);
-    return;
+    return true;
   }
 
   if (id.startsWith('s/')) {
@@ -73,12 +75,12 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
       context.ee.emit('subscribed_all');
     }
     // validate_if_instance_is_ready(context);
-    return;
+    return true;
   }
 
   if (id.startsWith('o/')) {
     handle_open_order_message(context, msg as RpcOpenOrderMsg);
-    return;
+    return true;
   }
 
   if (id === IDs.AccSummaries) {
@@ -86,14 +88,14 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
     // console.log(msg);
     hadle_opligatory_data_status(context, id);
     handle_get_account_summaries_message(context, msg as RpcAccSummariesMsg);
-    return;
+    return true;
   }
 
   if (id === IDs.GetCurrencies) {
     hadle_opligatory_data_status(context, id);
     handle_get_currencies_message(context, msg as RpcGetCurrenciesMsg);
     // validate_if_instance_is_ready(context);
-    return;
+    return true;
   }
 
   if (id === IDs.GetPositions) {
@@ -102,7 +104,7 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
     hadle_opligatory_data_status(context, id);
     handle_get_positions_message(context, msg as RpcGetPositionsMsg);
     // validate_if_instance_is_ready(context);
-    return;
+    return true;
   }
 
   if (id.startsWith('get_instruments/')) {
@@ -112,8 +114,11 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
     if (is_instruments_list_ready(context)) {
       process_subscribe_requested_instruments(context);
     }
-    return;
+    return true;
   }
+
+  // Unhandled message
+  return false;
 }
 
 export function handle_rpc_subscription_message(
@@ -124,15 +129,17 @@ export function handle_rpc_subscription_message(
   if (channel.startsWith('user.portfolio')) {
     const currency = channel.split('.')[2].toUpperCase() as Currencies;
     context.ee.emit('portfolio_updated', currency);
-    return;
+    return true;
   }
+
   if (channel.startsWith('deribit_price_index')) {
     const pair = channel.split('.')[1] as Indexes;
     const { price } = data as BTCIndexData;
     context.indexes_list[pair] = price;
     context.ee.emit('index_updated', pair);
-    return;
+    return true;
   }
+
   if (channel.startsWith('ticker')) {
     const instrument_name = channel.split('.')[1];
     if (!context.ticker_data[instrument_name]) {
@@ -162,6 +169,7 @@ export function handle_rpc_subscription_message(
         expiration_timestamp: instrument.expiration_timestamp,
       });
     }
+    
     if (
       raw_data.funding_8h !== undefined &&
       context.ticker_data[instrument_name].raw.index_price !== undefined &&
@@ -174,14 +182,19 @@ export function handle_rpc_subscription_message(
     }
 
     context.ee.emit('ticker_updated', instrument_name);
-    return;
+    return true;
   }
+
   if (channel.startsWith('user.changes')) {
     const parts = channel.split('.');
     // console.log(parts);
     // console.log(data);
     // this.portfolio[currency] = data as UserPortfolioByCurrency;
     // this.ee.emit('portfolio_updated', currency);
-    return;
+    
+    return false; // TODO Unhandled message yet, change it later
   }
+
+  // Unhandled message
+  return false;
 }
