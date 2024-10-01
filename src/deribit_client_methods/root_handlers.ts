@@ -195,7 +195,14 @@ export function handle_rpc_subscription_message(
     const { trades } = changes;
     context.user_changes.push(changes);
     context.trades.push(...trades);
-    // TODO: handle orders and positions
+    trades.forEach((trade) => {
+      const { label } = trade;
+      if (!label) {
+        throw new Error(`Order's trade has no label, trading is not allowed from an external source`);
+      }
+      context.orders.all[label].trades.push(trade);
+    });
+    // TODO: handle orders (finally) and positions
     return true;
   }
 
