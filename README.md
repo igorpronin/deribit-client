@@ -67,6 +67,7 @@ client.ee.once('ticker_updated', (instrument_name: string) => console.log('Ticke
 client.ee.on('all_obligatory_data_received', () => console.log('All obligatory data received!'));
 client.ee.on('order_updated', (order_id: string) => console.log('Order updated!', order_id));
 client.ee.on('order_filled', (order_id: string) => console.log('Order filled!', order_id));
+client.ee.on('account_summaries_updated', () => console.log('Account summaries updated!'));
 ```
 
 ## Public Methods

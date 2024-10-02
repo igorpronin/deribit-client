@@ -36,6 +36,7 @@ export function handle_get_account_summaries_message(
   msg.result.summaries.forEach((summary) => {
     context.account_summaries[summary.currency] = summary;
   });
+  context.ee.emit('account_summaries_updated');
   to_console(context, `Received: account summaries`);
 }
 
@@ -72,7 +73,7 @@ export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOr
   order_data.is_pending = false;
   context.orders.pending_orders_amount--;
   const order = msg.result.order;
-  const { order_id, order_state } = order;
+  const { order_id, order_state, label } = order;
   order_data.order_rpc_message_results.push(order);
   if (!context.orders.by_ref_id[order_id]) {
     context.orders.by_ref_id[order_id] = order_data;
@@ -85,8 +86,8 @@ export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOr
   if (order_data.state === 'open' && is_closing_states) {
     order_data.state = order_state;
   }
-  context.ee.emit('order_updated', order_id);
+  context.ee.emit('order_updated', label);
   if (order_state === 'filled') {
-    context.ee.emit('order_filled', order_id);
+    context.ee.emit('order_filled', label);
   }
 }

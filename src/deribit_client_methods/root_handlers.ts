@@ -147,17 +147,20 @@ export function handle_rpc_subscription_message(
 
   if (channel.startsWith('ticker')) {
     const instrument_name = channel.split('.')[1];
-    if (!context.ticker_data[instrument_name]) {
-      context.ticker_data[instrument_name] = {
-        raw: data as unknown as TickerData,
-        calculated: {
-          time_to_expiration_in_minutes: null,
-          apr: null,
-          premium_absolute: null,
-          premium_relative: null,
-        },
-      };
+    const initial = {
+      raw: data as unknown as TickerData,
+      calculated: {
+        time_to_expiration_in_minutes: null,
+        apr: null,
+        premium_absolute: null,
+        premium_relative: null,
+      },
     }
+    if (!context.ticker_data[instrument_name]) {
+      context.ticker_data[instrument_name] = initial;
+    }
+
+    context.ticker_data[instrument_name].raw = data as unknown as TickerData;
 
     const raw_data = data as unknown as TickerData;
     const instrument = context.deribit_instruments_by_name[instrument_name] as Instrument;
