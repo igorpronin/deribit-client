@@ -120,6 +120,10 @@ export function create_process_open_order(context: DeribitClient) {
       order_rpc_message_results: [],
       state: null,
       trades: [],
+      closed_timestamp: null,
+      average_price: null,
+      traded_amount: null,
+      total_fee: null,
     };
     context.orders.all[id] = order_data;
     context.orders.list.push(order_data);

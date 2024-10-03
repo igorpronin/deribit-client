@@ -120,6 +120,9 @@ Returns the position for the specified instrument.
 #### get_orders()
 Returns all orders.
 
+#### get_order_by_label(label: string)
+Returns the order for the specified label.
+
 #### get_trades()
 Returns all trades.
 

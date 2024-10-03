@@ -70,21 +70,41 @@ export function handle_get_positions_message(context: DeribitClient, msg: RpcGet
 export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOrderMsg) {
   const id = msg.id.split('/')[1];
   const order_data = context.orders.all[id];
+
   order_data.is_pending = false;
   context.orders.pending_orders_amount--;
   const order = msg.result.order;
-  const { order_id, order_state, label } = order;
+  const trades = msg.result.trades;
+
+  const { order_id, order_state, label, last_update_timestamp } = order;
+
   order_data.order_rpc_message_results.push(order);
   if (!context.orders.by_ref_id[order_id]) {
     context.orders.by_ref_id[order_id] = order_data;
   }
+  // TODO think here a lot, if it is safe or not
   if (!order_data.state) {
     order_data.state = order_state;
   }
+  // TODO warning! order_state not updates here if it is not null already!!
   const is_closing_states =
     order_state === 'filled' || order_state === 'rejected' || order_state === 'cancelled';
-  if (order_data.state === 'open' && is_closing_states) {
+
+  // TODO thank here, probably, move it to subscription handling
+  if (is_closing_states) {
     order_data.state = order_state;
+    order_data.closed_timestamp = last_update_timestamp;
+    let total_amount = 0;
+    let total_sum = 0;
+    let total_fee = 0;
+    trades.forEach((trade) => {
+      total_amount += trade.amount;
+      total_sum += trade.amount * trade.price;
+      total_fee += trade.fee;
+    });
+    order_data.average_price = total_sum / total_amount;
+    order_data.traded_amount = total_amount;
+    order_data.total_fee = total_fee;
   }
   context.ee.emit('order_updated', label);
   if (order_state === 'filled') {

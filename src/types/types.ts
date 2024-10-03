@@ -128,6 +128,10 @@ export interface OrderData {
   order_rpc_message_results: Order[];
   state: null | OrderStates;
   trades: Trade[];
+  closed_timestamp: number | null;
+  average_price: number | null;
+  traded_amount: number | null;
+  total_fee: number | null;
 }
 
 export type SubscriptionData = BTCIndexData | UserChanges | UserPortfolioByCurrency;

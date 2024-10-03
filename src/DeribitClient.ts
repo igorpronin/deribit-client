@@ -320,6 +320,8 @@ export class DeribitClient {
 
   public get_orders = () => this.orders;
 
+  public get_order_by_label = (label: string) => this.orders.all[label];
+
   public get_trades = () => this.trades;
 
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
