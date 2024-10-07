@@ -75,6 +75,9 @@ client.ee.on('account_summaries_updated', () => console.log('Account summaries u
 #### get_configuration()
 Returns the current configuration of the client.
 
+#### can_trade()
+Returns a boolean indicating whether the client can trade.
+
 #### get_index(index: Indexes)
 Returns the current index price for the specified currency pair.
 

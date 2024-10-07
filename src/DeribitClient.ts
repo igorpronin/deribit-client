@@ -287,6 +287,8 @@ export class DeribitClient {
     };
   };
 
+  public can_trade = (): boolean => this.auth_data.trade_permit;
+
   public get_index = (index: Indexes) => this.indexes_list[index];
 
   public get_pending_subscriptions = () => this.subscriptions_pending;
