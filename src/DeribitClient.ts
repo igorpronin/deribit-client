@@ -227,6 +227,7 @@ export class DeribitClient {
       }
     };
     this.on_close = () => {
+      this.ee.emit('disconnected');
       if (on_close) {
         on_close();
       }

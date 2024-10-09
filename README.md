@@ -68,6 +68,7 @@ client.ee.on('all_obligatory_data_received', () => console.log('All obligatory d
 client.ee.on('order_updated', (order_id: string) => console.log('Order updated!', order_id));
 client.ee.on('order_filled', (order_id: string) => console.log('Order filled!', order_id));
 client.ee.on('account_summaries_updated', () => console.log('Account summaries updated!'));
+client.ee.on('disconnected', () => console.log('Disconnected!'));
 ```
 
 ## Public Methods
