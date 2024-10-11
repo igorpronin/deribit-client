@@ -9,7 +9,7 @@
     "build": "tsc",
     "clear": "rm -rf ./dist",
     "dev": "nodemon ./src/index.ts",
-    "debug": "nodemon ./tmp/app.ts",
+    "debug": "nodemon ./tmp/premium.ts",
     "format": "prettier --write \"./src/**/*.ts\" \"./tests/**/*.ts\"",
     "format:tmp": "prettier --write \"./tmp/**/*.ts\"",
     "format:tools": "prettier --write \"./tools/*.js\"",
@@ -46,6 +46,7 @@
     "@igorpronin/utils": "^1.0.4",
     "@types/ws": "^8.5.10",
     "events": "^3.3.0",
+    "moment": "^2.30.1",
     "ws": "^8.16.0"
   },
   "publishConfig": {

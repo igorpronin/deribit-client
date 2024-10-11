@@ -11,6 +11,7 @@ type Params = {
   timestamp: number;
   expiration_timestamp: number;
 };
+
 export const calculate_future_apr_and_premium = (params: Params) => {
   const { index_price, mark_price, timestamp, expiration_timestamp } = params;
 
