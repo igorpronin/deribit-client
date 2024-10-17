@@ -14,6 +14,7 @@ import {
   RpcGetInstrumentsMsg,
   Instrument,
   UserChanges,
+  BookSubscriptionData,
 } from '../types/types';
 import { Indexes, TickerData } from '../types/deribit_objects';
 import { calculate_future_apr_and_premium, calculate_premium } from '../helpers';
@@ -117,6 +118,7 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
     handle_get_instruments_message(context, msg as RpcGetInstrumentsMsg);
     // validate_if_instance_is_ready(context);
     if (is_instruments_list_ready(context)) {
+      // with orderbook or not
       process_subscribe_requested_instruments(context);
     }
     return true;
@@ -190,6 +192,86 @@ export function handle_rpc_subscription_message(
     }
 
     context.ee.emit('ticker_updated', instrument_name);
+    return true;
+  }
+
+  if (channel.startsWith('book')) {
+    const instrument_name = channel.split('.')[1];
+    const initial = {
+      instrument_name,
+      is_snapshot_received: false,
+      bids: [],
+      asks: [],
+      bids_amount: 0,
+      asks_amount: 0,
+      mid_price: null,
+    }
+    if (!context.book_data[instrument_name]) {
+      context.book_data[instrument_name] = initial;
+    }
+
+    const { bids, asks, type } = data as BookSubscriptionData;
+
+    if (type === 'snapshot') {
+      context.book_data[instrument_name].bids = bids.map((bid) => [bid[1], bid[2]]);
+      context.book_data[instrument_name].asks = asks.map((ask) => [ask[1], ask[2]]);
+      context.book_data[instrument_name].is_snapshot_received = true;
+    } else {
+      bids.forEach((bid) => {
+        const [change_type, price, amount] = bid;
+        if (change_type === 'new') {
+          context.book_data[instrument_name].bids.push([price, amount]);
+          context.book_data[instrument_name].bids.sort((a, b) => b[0] - a[0]);
+        }
+        if (change_type === 'change') {
+          const index = context.book_data[instrument_name].bids.findIndex((bid) => bid[0] === price);
+          if (index !== -1) {
+            context.book_data[instrument_name].bids[index][1] = amount;
+          }
+        }
+        if (change_type === 'delete') {
+          const index = context.book_data[instrument_name].bids.findIndex((bid) => bid[0] === price);
+          if (index !== -1) {
+            context.book_data[instrument_name].bids.splice(index, 1);
+          }
+        }
+      })
+
+      asks.forEach((ask) => {
+        const [change_type, price, amount] = ask;
+        if (change_type === 'new') {
+          context.book_data[instrument_name].asks.push([price, amount]);
+          context.book_data[instrument_name].asks.sort((a, b) => a[0] - b[0]);
+        }
+        if (change_type === 'change') {
+          const index = context.book_data[instrument_name].asks.findIndex((ask) => ask[0] === price);
+          if (index !== -1) {
+            context.book_data[instrument_name].asks[index][1] = amount;
+          }
+        }
+        if (change_type === 'delete') {
+          const index = context.book_data[instrument_name].asks.findIndex((ask) => ask[0] === price);
+          if (index !== -1) {
+            context.book_data[instrument_name].asks.splice(index, 1);
+          }
+        }
+      })
+    }
+
+    if (bids.length > 0) {
+      context.book_data[instrument_name].bids_amount = context.book_data[instrument_name].bids.reduce((acc, bid) => acc + bid[1], 0);
+    }
+    if (asks.length > 0) {
+      context.book_data[instrument_name].asks_amount = context.book_data[instrument_name].asks.reduce((acc, ask) => acc + ask[1], 0);
+    }
+
+    if (context.book_data[instrument_name].bids.length > 0 && context.book_data[instrument_name].asks.length > 0) {
+      context.book_data[instrument_name].mid_price = (context.book_data[instrument_name].bids[0][0] + context.book_data[instrument_name].asks[0][0]) / 2;
+    }
+
+    console.log(context.book_data[instrument_name]);
+    
+    context.ee.emit('book_updated', instrument_name);
     return true;
   }
 

@@ -29,8 +29,11 @@ export type PublicIndexSubscription = `deribit_price_index.${string}`;
 // https://docs.deribit.com/#ticker-instrument_name-interval
 export type PublicTickerSubscription = `ticker.${string}.raw`;
 
+// https://docs.deribit.com/#book-instrument_name-interval
+export type PublicBookSubscription = `book.${string}.raw`;
+
 // https://docs.deribit.com/#subscriptions
-export type PublicSubscription = PublicIndexSubscription | PublicTickerSubscription;
+export type PublicSubscription = PublicIndexSubscription | PublicTickerSubscription | PublicBookSubscription;
 
 // https://docs.deribit.com/#subscriptions
 export type PrivateSubscription = `user.portfolio.${CurrenciesLowerCase}` | 'user.changes.any.any.raw';
@@ -134,7 +137,7 @@ export interface OrderData {
   total_fee: number | null;
 }
 
-export type SubscriptionData = BTCIndexData | UserChanges | UserPortfolioByCurrency;
+export type SubscriptionData = BTCIndexData | UserChanges | UserPortfolioByCurrency | BookSubscriptionData;
 
 export interface SubscriptionParams {
   channel: Subscriptions;
@@ -150,6 +153,16 @@ export interface BTCIndexData {
   index_name: Indexes;
   price: number;
   timestamp: number;
+}
+
+type ChangeType = 'new' | 'change' | 'delete';
+
+export interface BookSubscriptionData {
+  type: 'snapshot' | 'change';
+  timestamp: number;
+  instrument_name: string;
+  bids: [change_type: ChangeType, price: number, amount: number][];
+  asks: [change_type: ChangeType, price: number, amount: number][];
 }
 
 // https://docs.deribit.com/#user-changes-kind-currency-interval

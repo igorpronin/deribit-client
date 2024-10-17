@@ -60,6 +60,9 @@ type Params = {
   output_console?: boolean;
   indexes?: Indexes[];
   instruments?: string[];
+  instruments_with_orderbook?: boolean;
+  // TODO: implement orderbook_depth_price correct and clear processing, include to README.md
+  orderbook_depth_price?: number;
   on_open?: () => void;
   on_close?: () => void;
   on_error?: (error?: Error) => void;
@@ -74,6 +77,16 @@ type TickerFullData = {
     premium_absolute: number | null;
     premium_relative: number | null;
   };
+};
+
+type BookData = {
+  instrument_name: string;
+  is_snapshot_received: boolean;
+  bids_amount: number;
+  asks_amount: number;
+  bids: [price: number, amount: number][];
+  asks: [price: number, amount: number][];
+  mid_price: number | null;
 };
 
 type CurrenciesData = { list: CurrencyData[] };
@@ -107,6 +120,8 @@ export class DeribitClient {
   public output_console: boolean | undefined = true;
   public indexes: Indexes[] | undefined;
   public instruments: string[] | undefined;
+  public instruments_with_orderbook: boolean | undefined;
+  public orderbook_depth_price: number | undefined;
   // End of user defined variables and connection attributes
 
   // Event handler functions
@@ -179,6 +194,8 @@ export class DeribitClient {
 
   public ticker_data: Record<string, TickerFullData> = {};
 
+  public book_data: Record<string, BookData> = {};
+
   public deribit_currencies_list: CurrenciesData = { list: [] };
 
   constructor(params: Params) {
@@ -189,6 +206,8 @@ export class DeribitClient {
       output_console,
       indexes,
       instruments,
+      instruments_with_orderbook,
+      orderbook_depth_price,
       on_open,
       on_close,
       on_message,
@@ -214,7 +233,8 @@ export class DeribitClient {
     this.client = new WebSocket(this.ws_api_url);
     this.indexes = indexes;
     this.instruments = instruments;
-
+    this.instruments_with_orderbook = instruments_with_orderbook;
+    this.orderbook_depth_price = orderbook_depth_price;
     validate_user_requests(this);
 
     this.ee = new EventEmitter();

@@ -17,6 +17,8 @@ import {
   Kinds,
 } from '@igorpronin/deribit-client';
 
+// BTC-PERPETUAL - future contract format
+// BTC_USDC - spot format
 const client = new DeribitClient({
   api_env: 'prod',
   api_key: 'YOUR_DERIBIT_API_KEY',
@@ -26,7 +28,8 @@ const client = new DeribitClient({
   
   // at least one of two options (indexes or instruments) required and shouldn't be empty:
   indexes: ['eth_usd', 'btc_usd'], // optional
-  instruments: ['BTC-PERPETUAL', 'ETH-PERPETUAL'], // optional
+  instruments: [BTC-PERPETUAL, 'ETH-PERPETUAL', 'BTC_USDC'], // optional
+  instruments_with_orderbook: true, // optional, defaults to false
 
   on_open: () => console.log('WebSocket opened'),
   on_close: () => console.log('WebSocket closed'),
@@ -69,6 +72,7 @@ client.ee.on('order_updated', (order_id: string) => console.log('Order updated!'
 client.ee.on('order_filled', (order_id: string) => console.log('Order filled!', order_id));
 client.ee.on('account_summaries_updated', () => console.log('Account summaries updated!'));
 client.ee.on('disconnected', () => console.log('Disconnected!'));
+client.ee.on('book_updated', (instrument_name: string) => console.log('Book updated!', instrument_name));
 ```
 
 ## Public Methods

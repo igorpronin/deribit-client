@@ -39,6 +39,9 @@ export function process_subscribe_requested_instruments(context: DeribitClient) 
       throw new Error(`Instrument ${instrument} not found`);
     }
     process_subscribe(context, `ticker.${instrument}.raw`);
+    if (context.instruments_with_orderbook) {
+      process_subscribe(context, `book.${instrument}.raw`);
+    }
   });
 }
 
