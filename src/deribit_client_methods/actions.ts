@@ -4,7 +4,7 @@ import {
   request_get_account_summaries,
   request_open_order,
 } from '../rpc_requests';
-import { GetInstrumentID, IDs, Kinds, OrderParams, Subscriptions, Indexes } from '../types/types';
+import { GetInstrumentID, IDs, Kinds, OrderParams, Subscriptions, Indexes, OrderType } from '../types/types';
 import { DeribitClient } from '../DeribitClient';
 import { to_console } from './utils';
 import { request_subscribe } from '../rpc_requests';
@@ -113,6 +113,13 @@ export function create_process_open_order(context: DeribitClient) {
     }
     if (!context.auth_data.trade_permit) {
       throw new Error('Trade "read_write" scope is not granted');
+    }
+    const { type, price, amount } = params;
+    if (type === OrderType.limit && (price === undefined || price <= 0)) {
+      throw new Error('Price is required for limit order');
+    }
+    if (amount === undefined || amount <= 0) {
+      throw new Error('Amount is required');
     }
     const { id } = request_open_order(context.client, params);
     context.orders.pending_orders_amount++;
