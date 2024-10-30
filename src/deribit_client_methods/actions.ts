@@ -47,6 +47,7 @@ export function process_subscribe_requested_instruments(context: DeribitClient) 
 
 export function process_request_obligatory_subscriptions(context: DeribitClient) {
   process_subscribe(context, 'user.changes.any.any.raw');
+  process_subscribe(context, 'user.portfolio.any');
 }
 
 export function process_get_positions(context: DeribitClient) {

@@ -14,6 +14,7 @@ import {
   RpcGetInstrumentsMsg,
   Instrument,
   UserChanges,
+  UserPortfolioByCurrency,
   BookSubscriptionData,
 } from '../types/types';
 import { Indexes, TickerData } from '../types/deribit_objects';
@@ -134,8 +135,16 @@ export function handle_rpc_subscription_message(
 ) {
   const { channel, data } = msg.params;
   if (channel.startsWith('user.portfolio')) {
+    const subscription_data = data as UserPortfolioByCurrency;
     const currency = channel.split('.')[2].toUpperCase() as Currencies;
-    context.ee.emit('portfolio_updated', currency);
+    // @ts-expect-error
+    if (currency === 'ANY') {
+      const data_currency = subscription_data.currency as Currencies;
+      context.account_summaries[data_currency] = subscription_data;
+      context.ee.emit('portfolio_updated', data_currency);
+    } else {
+      to_console(context, `Unhandled portfolio subscription: ${channel}`, true);
+    }    
     return true;
   }
 

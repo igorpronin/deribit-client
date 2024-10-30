@@ -36,7 +36,7 @@ export type PublicBookSubscription = `book.${string}.raw`;
 export type PublicSubscription = PublicIndexSubscription | PublicTickerSubscription | PublicBookSubscription;
 
 // https://docs.deribit.com/#subscriptions
-export type PrivateSubscription = `user.portfolio.${CurrenciesLowerCase}` | 'user.changes.any.any.raw';
+export type PrivateSubscription = `user.portfolio.${CurrenciesLowerCase}` | 'user.portfolio.any' | 'user.changes.any.any.raw';
 
 // OrdersAnyAny = 'user.orders.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-orders-kind-currency-raw
 // ChangesAnyAny = 'user.changes.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-changes-kind-currency-interval

@@ -13,6 +13,7 @@ import {
   RpcSubscriptionMessage,
   ScopeTitle,
   Scope,
+  UserPortfolioByCurrency,
   UserChanges,
 } from './types/types';
 import {
@@ -177,7 +178,7 @@ export class DeribitClient {
 
   public user_changes: UserChanges[] = [];
 
-  public account_summaries: Partial<Record<Currencies, AccountSummary>> = {};
+  public account_summaries: Partial<Record<Currencies, AccountSummary | UserPortfolioByCurrency>> = {};
 
   public positions: Record<string, Position> = {};
 
