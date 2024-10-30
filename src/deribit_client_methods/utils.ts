@@ -81,11 +81,11 @@ export function hadle_opligatory_data_status(context: DeribitClient, id: string)
 export function validate_user_requests(context: DeribitClient) {
   let no_indexes = !context.indexes || context.indexes.length === 0;
   let no_instruments = !context.instruments || context.instruments.length === 0;
-  to_console(
-    context,
-    `No indexes or instruments to monitor or trade, add one or both of the options: indexes or instruments`,
-  );
   if (no_indexes && no_instruments) {
+    to_console(
+      context,
+      `No indexes or instruments to monitor or trade, add one or both of the options: indexes or instruments`,
+    );
     throw new Error('No indexes or instruments to monitor or trade');
   }
 }
