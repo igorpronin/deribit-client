@@ -286,17 +286,24 @@ export function handle_rpc_subscription_message(
 
   if (channel.startsWith('user.changes')) {
     const changes = data as UserChanges;
-    const { trades } = changes;
+    const { trades, positions } = changes;
     context.user_changes.push(changes);
     context.trades.push(...trades);
     trades.forEach((trade) => {
       const { label } = trade;
       if (!label) {
-        throw new Error(`Order's trade has no label, trading is not allowed from an external source`);
+        to_console(context, `Order's trade has no label, trading from an external source is not recommended`, true);
+      } else if (!context.orders.all[label]) {
+        to_console(context, `Order with label ${label} not found, the trade proceed from other api client`, true);
+      } else {
+        context.orders.all[label].trades.push(trade);
       }
-      context.orders.all[label].trades.push(trade);
     });
-    // TODO: handle orders (finally) and positions
+    positions.forEach((position) => {
+      context.positions[position.instrument_name] = position;
+      context.ee.emit('position_updated', position.instrument_name);
+    });
+    // TODO: handle orders (finally)
     return true;
   }
 
