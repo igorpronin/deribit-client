@@ -57,6 +57,7 @@ type Params = {
   api_env: ApiEnv;
   api_key: string;
   client_id: string;
+  readonly?: boolean;
   instance_id?: string;
   output_console?: boolean;
   indexes?: Indexes[];
@@ -115,6 +116,7 @@ export class DeribitClient {
   public ws_api_url: string;
   public api_key: string; // API key
   public client_id: string; // API key ID
+  public readonly: boolean | undefined;
   public username: string | undefined;
   public acc_type: string | undefined;
   public user_id: number | undefined;
@@ -205,6 +207,7 @@ export class DeribitClient {
       api_key,
       client_id,
       output_console,
+      readonly,
       indexes,
       instruments,
       instruments_with_orderbook,
@@ -229,6 +232,7 @@ export class DeribitClient {
     this.api_env = api_env;
     this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
     this.output_console = output_console;
+    this.readonly = readonly;
     this.api_key = api_key;
     this.client_id = client_id;
     this.client = new WebSocket(this.ws_api_url);

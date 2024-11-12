@@ -42,7 +42,7 @@ export function handle_auth_message(context: DeribitClient, msg: RpcAuthMsg, is_
 
   process_scope(context, msg.result.scope);
 
-  if (context.auth_data.scope.processed.trade !== 'read_write') {
+  if (context.auth_data.scope.processed.trade !== 'read_write' && !context.readonly) {
     to_console(
       context,
       'Warning: Trade "read_write" scope is not granted, please set it in the API key settings if you want to be able to send orders',

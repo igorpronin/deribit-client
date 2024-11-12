@@ -25,6 +25,7 @@ const client = new DeribitClient({
   client_id: 'YOUR_DERIBIT_CLIENT_ID',
   instance_id: 'YOUR_INSTANCE_ID', // optional
   output_console: true, // optional, defaults to true
+  readonly: true, // optional, defaults to false
   
   // at least one of two options (indexes or instruments) required and shouldn't be empty:
   indexes: ['eth_usd', 'btc_usd'], // optional

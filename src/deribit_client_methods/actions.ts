@@ -112,6 +112,9 @@ export function create_process_open_order(context: DeribitClient) {
     if (!context.auth_data.state) {
       throw new Error('Not authorized');
     }
+    if (context.readonly) {
+      throw new Error('Instance is in readonly mode');
+    }
     if (!context.auth_data.trade_permit) {
       throw new Error('Trade "read_write" scope is not granted');
     }
