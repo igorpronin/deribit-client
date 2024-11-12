@@ -227,7 +227,7 @@ export class DeribitClient {
     // End of Applying public actions
 
     if (params.instance_id) {
-      this.msg_prefix = `[Deribit client (${params.instance_id})]`;
+      this.msg_prefix = this.msg_prefix += ` [${params.instance_id}]`;
     }
     this.api_env = api_env;
     this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
