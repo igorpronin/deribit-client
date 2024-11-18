@@ -180,7 +180,8 @@ export class DeribitClient {
 
   public user_changes: UserChanges[] = [];
 
-  public account_summaries: Partial<Record<Currencies, AccountSummary | UserPortfolioByCurrency>> = {};
+  public account_summaries: Partial<Record<Currencies, AccountSummary | UserPortfolioByCurrency>> =
+    {};
 
   public positions: Record<string, Position> = {};
 

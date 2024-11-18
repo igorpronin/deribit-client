@@ -144,7 +144,7 @@ export function handle_rpc_subscription_message(
       context.ee.emit('portfolio_updated', data_currency);
     } else {
       to_console(context, `Unhandled portfolio subscription: ${channel}`, true);
-    }    
+    }
     return true;
   }
 
@@ -166,7 +166,7 @@ export function handle_rpc_subscription_message(
         premium_absolute: null,
         premium_relative: null,
       },
-    }
+    };
     if (!context.ticker_data[instrument_name]) {
       context.ticker_data[instrument_name] = initial;
     }
@@ -176,11 +176,7 @@ export function handle_rpc_subscription_message(
     const raw_data = data as unknown as TickerData;
     const instrument = context.deribit_instruments_by_name[instrument_name] as Instrument;
 
-    if (
-      instrument &&
-      raw_data.funding_8h === undefined &&
-      instrument.expiration_timestamp
-    ) {
+    if (instrument && raw_data.funding_8h === undefined && instrument.expiration_timestamp) {
       context.ticker_data[instrument_name].calculated = calculate_future_apr_and_premium({
         index_price: context.ticker_data[instrument_name].raw.index_price,
         mark_price: context.ticker_data[instrument_name].raw.mark_price,
@@ -214,7 +210,7 @@ export function handle_rpc_subscription_message(
       bids_amount: 0,
       asks_amount: 0,
       mid_price: null,
-    }
+    };
     if (!context.book_data[instrument_name]) {
       context.book_data[instrument_name] = initial;
     }
@@ -233,18 +229,22 @@ export function handle_rpc_subscription_message(
           context.book_data[instrument_name].bids.sort((a, b) => b[0] - a[0]);
         }
         if (change_type === 'change') {
-          const index = context.book_data[instrument_name].bids.findIndex((bid) => bid[0] === price);
+          const index = context.book_data[instrument_name].bids.findIndex(
+            (bid) => bid[0] === price,
+          );
           if (index !== -1) {
             context.book_data[instrument_name].bids[index][1] = amount;
           }
         }
         if (change_type === 'delete') {
-          const index = context.book_data[instrument_name].bids.findIndex((bid) => bid[0] === price);
+          const index = context.book_data[instrument_name].bids.findIndex(
+            (bid) => bid[0] === price,
+          );
           if (index !== -1) {
             context.book_data[instrument_name].bids.splice(index, 1);
           }
         }
-      })
+      });
 
       asks.forEach((ask) => {
         const [change_type, price, amount] = ask;
@@ -253,33 +253,47 @@ export function handle_rpc_subscription_message(
           context.book_data[instrument_name].asks.sort((a, b) => a[0] - b[0]);
         }
         if (change_type === 'change') {
-          const index = context.book_data[instrument_name].asks.findIndex((ask) => ask[0] === price);
+          const index = context.book_data[instrument_name].asks.findIndex(
+            (ask) => ask[0] === price,
+          );
           if (index !== -1) {
             context.book_data[instrument_name].asks[index][1] = amount;
           }
         }
         if (change_type === 'delete') {
-          const index = context.book_data[instrument_name].asks.findIndex((ask) => ask[0] === price);
+          const index = context.book_data[instrument_name].asks.findIndex(
+            (ask) => ask[0] === price,
+          );
           if (index !== -1) {
             context.book_data[instrument_name].asks.splice(index, 1);
           }
         }
-      })
+      });
     }
 
     if (bids.length > 0) {
-      context.book_data[instrument_name].bids_amount = context.book_data[instrument_name].bids.reduce((acc, bid) => acc + bid[1], 0);
+      context.book_data[instrument_name].bids_amount = context.book_data[
+        instrument_name
+      ].bids.reduce((acc, bid) => acc + bid[1], 0);
     }
     if (asks.length > 0) {
-      context.book_data[instrument_name].asks_amount = context.book_data[instrument_name].asks.reduce((acc, ask) => acc + ask[1], 0);
+      context.book_data[instrument_name].asks_amount = context.book_data[
+        instrument_name
+      ].asks.reduce((acc, ask) => acc + ask[1], 0);
     }
 
-    if (context.book_data[instrument_name].bids.length > 0 && context.book_data[instrument_name].asks.length > 0) {
-      context.book_data[instrument_name].mid_price = (context.book_data[instrument_name].bids[0][0] + context.book_data[instrument_name].asks[0][0]) / 2;
+    if (
+      context.book_data[instrument_name].bids.length > 0 &&
+      context.book_data[instrument_name].asks.length > 0
+    ) {
+      context.book_data[instrument_name].mid_price =
+        (context.book_data[instrument_name].bids[0][0] +
+          context.book_data[instrument_name].asks[0][0]) /
+        2;
     }
 
     console.log(context.book_data[instrument_name]);
-    
+
     context.ee.emit('book_updated', instrument_name);
     return true;
   }
@@ -292,9 +306,17 @@ export function handle_rpc_subscription_message(
     trades.forEach((trade) => {
       const { label } = trade;
       if (!label) {
-        to_console(context, `Order's trade has no label, trading from an external source is not recommended`, true);
+        to_console(
+          context,
+          `Order's trade has no label, trading from an external source is not recommended`,
+          true,
+        );
       } else if (!context.orders.all[label]) {
-        to_console(context, `Order with label ${label} not found, the trade proceed from other api client`, true);
+        to_console(
+          context,
+          `Order with label ${label} not found, the trade proceed from other api client`,
+          true,
+        );
       } else {
         context.orders.all[label].trades.push(trade);
       }

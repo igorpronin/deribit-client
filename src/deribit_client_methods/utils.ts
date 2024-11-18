@@ -3,7 +3,11 @@ import { DeribitClient } from '../DeribitClient';
 import { remove_elements_from_existing_array } from '@igorpronin/utils';
 import { re_auth } from './auth_requests_and_handlers';
 
-export function to_console(context: DeribitClient, msg: string, error?: RpcError | RpcMessage | boolean) {
+export function to_console(
+  context: DeribitClient,
+  msg: string,
+  error?: RpcError | RpcMessage | boolean,
+) {
   if (error) {
     console.error(`${context.msg_prefix} ${msg}`);
     if (typeof error !== 'boolean') {

@@ -4,7 +4,15 @@ import {
   request_get_account_summaries,
   request_open_order,
 } from '../rpc_requests';
-import { GetInstrumentID, IDs, Kinds, OrderParams, Subscriptions, Indexes, OrderType } from '../types/types';
+import {
+  GetInstrumentID,
+  IDs,
+  Kinds,
+  OrderParams,
+  Subscriptions,
+  Indexes,
+  OrderType,
+} from '../types/types';
 import { DeribitClient } from '../DeribitClient';
 import { to_console } from './utils';
 import { request_subscribe } from '../rpc_requests';
