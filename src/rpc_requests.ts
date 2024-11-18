@@ -1,5 +1,12 @@
 import WebSocket from 'ws';
-import { IDs, PrivateMethods, PublicMethods, Subscriptions, OrderParams } from './types/types';
+import {
+  IDs,
+  PrivateMethods,
+  PublicMethods,
+  Subscriptions,
+  OrderParams,
+  TransactionLogParams,
+} from './types/types';
 import { generate_random_id } from '@igorpronin/utils';
 
 export const custom_request = (client: WebSocket, method: string, id: string, params: any) => {
@@ -74,5 +81,15 @@ export const request_open_order = (
     time_in_force,
   };
   const msg = custom_request(client, `private/${direction}`, `o/${id}`, params);
+  return { id, msg };
+};
+
+// https://docs.deribit.com/#private-get_transaction_log
+export const request_get_transaction_log = (
+  client: WebSocket,
+  { currency, start_timestamp, end_timestamp, query, count, continuation }: TransactionLogParams,
+): { id: string; msg: any } => {
+  const id = IDs.GetTransactionLog;
+  const msg = custom_request(client, PrivateMethods.GetTransactionLog, id, {});
   return { id, msg };
 };

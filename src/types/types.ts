@@ -17,6 +17,7 @@ export enum IDs {
   AccSummaries = 'acc_summaries',
   GetCurrencies = 'get_currencies',
   GetPositions = 'get_positions',
+  GetTransactionLog = 'get_transaction_log',
 }
 
 export type GetInstrumentID = `get_instruments/${Kinds}`;
@@ -33,10 +34,16 @@ export type PublicTickerSubscription = `ticker.${string}.raw`;
 export type PublicBookSubscription = `book.${string}.raw`;
 
 // https://docs.deribit.com/#subscriptions
-export type PublicSubscription = PublicIndexSubscription | PublicTickerSubscription | PublicBookSubscription;
+export type PublicSubscription =
+  | PublicIndexSubscription
+  | PublicTickerSubscription
+  | PublicBookSubscription;
 
 // https://docs.deribit.com/#subscriptions
-export type PrivateSubscription = `user.portfolio.${CurrenciesLowerCase}` | 'user.portfolio.any' | 'user.changes.any.any.raw';
+export type PrivateSubscription =
+  | `user.portfolio.${CurrenciesLowerCase}`
+  | 'user.portfolio.any'
+  | 'user.changes.any.any.raw';
 
 // OrdersAnyAny = 'user.orders.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-orders-kind-currency-raw
 // ChangesAnyAny = 'user.changes.any.any.raw', // 1st "any" - kind of instrument, 2nd "any" currency, https://docs.deribit.com/#user-changes-kind-currency-interval
@@ -60,6 +67,7 @@ export enum PrivateMethods {
   PrivateSubscribe = 'private/subscribe',
   GetOrderState = 'private/get_order_state',
   GetPositions = 'private/get_positions',
+  GetTransactionLog = 'private/get_transaction_log',
 }
 
 export type Methods = PublicMethods | PrivateMethods;
@@ -87,6 +95,8 @@ export type CurrenciesLowerCase =
   | 'usdc'
   | 'eth'
   | 'btc';
+
+type TransactionLogCurrencies = 'BTC' | 'ETH' | 'USDC' | 'USDT' | 'EURR';
 
 export type Kinds = 'future' | 'option' | 'spot' | 'future_combo' | 'option_combo';
 
@@ -137,7 +147,11 @@ export interface OrderData {
   total_fee: number | null;
 }
 
-export type SubscriptionData = BTCIndexData | UserChanges | UserPortfolioByCurrency | BookSubscriptionData;
+export type SubscriptionData =
+  | BTCIndexData
+  | UserChanges
+  | UserPortfolioByCurrency
+  | BookSubscriptionData;
 
 export interface SubscriptionParams {
   channel: Subscriptions;
@@ -260,3 +274,32 @@ export interface RpcMsg {
 export type RpcResponseMessage = RpcSuccessResponse | RpcErrorResponse;
 
 export type RpcMessage = RpcResponseMessage | RpcSubscriptionMessage;
+
+type TransactionLogQuery =
+  | 'trade'
+  | 'maker'
+  | 'taker'
+  | 'open'
+  | 'close'
+  | 'liquidation'
+  | 'buy'
+  | 'sell'
+  | 'withdrawal'
+  | 'delivery'
+  | 'settlement'
+  | 'deposit'
+  | 'transfer'
+  | 'option'
+  | 'future'
+  | 'correction'
+  | 'block_trade'
+  | 'swap';
+
+export interface TransactionLogParams {
+  currency: TransactionLogCurrencies;
+  start_timestamp: number;
+  end_timestamp: number;
+  query?: TransactionLogQuery;
+  count?: number;
+  continuation?: string;
+}
