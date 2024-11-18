@@ -96,8 +96,6 @@ export type CurrenciesLowerCase =
   | 'eth'
   | 'btc';
 
-type TransactionLogCurrencies = 'BTC' | 'ETH' | 'USDC' | 'USDT' | 'EURR';
-
 export type Kinds = 'future' | 'option' | 'spot' | 'future_combo' | 'option_combo';
 
 export type ScopeTitle = 'name' | 'connection' | 'trade' | 'wallet' | 'account' | 'custody';
@@ -274,32 +272,3 @@ export interface RpcMsg {
 export type RpcResponseMessage = RpcSuccessResponse | RpcErrorResponse;
 
 export type RpcMessage = RpcResponseMessage | RpcSubscriptionMessage;
-
-type TransactionLogQuery =
-  | 'trade'
-  | 'maker'
-  | 'taker'
-  | 'open'
-  | 'close'
-  | 'liquidation'
-  | 'buy'
-  | 'sell'
-  | 'withdrawal'
-  | 'delivery'
-  | 'settlement'
-  | 'deposit'
-  | 'transfer'
-  | 'option'
-  | 'future'
-  | 'correction'
-  | 'block_trade'
-  | 'swap';
-
-export interface TransactionLogParams {
-  currency: TransactionLogCurrencies;
-  start_timestamp: number;
-  end_timestamp: number;
-  query?: TransactionLogQuery;
-  count?: number;
-  continuation?: string;
-}

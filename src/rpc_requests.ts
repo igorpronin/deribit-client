@@ -90,6 +90,13 @@ export const request_get_transaction_log = (
   { currency, start_timestamp, end_timestamp, query, count, continuation }: TransactionLogParams,
 ): { id: string; msg: any } => {
   const id = IDs.GetTransactionLog;
-  const msg = custom_request(client, PrivateMethods.GetTransactionLog, id, {});
+  const msg = custom_request(client, PrivateMethods.GetTransactionLog, id, {
+    currency,
+    start_timestamp,
+    end_timestamp,
+    query,
+    count,
+    continuation,
+  });
   return { id, msg };
 };

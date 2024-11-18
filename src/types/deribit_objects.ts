@@ -327,3 +327,34 @@ export type Indexes =
   | 'xrp_usdt'
   | 'btcdvol_usdc'
   | 'ethdvol_usdc';
+
+type TransactionLogQuery =
+  | 'trade'
+  | 'maker'
+  | 'taker'
+  | 'open'
+  | 'close'
+  | 'liquidation'
+  | 'buy'
+  | 'sell'
+  | 'withdrawal'
+  | 'delivery'
+  | 'settlement'
+  | 'deposit'
+  | 'transfer'
+  | 'option'
+  | 'future'
+  | 'correction'
+  | 'block_trade'
+  | 'swap';
+
+type TransactionLogCurrencies = 'BTC' | 'ETH' | 'USDC' | 'USDT' | 'EURR';
+
+export interface TransactionLogParams {
+  currency: TransactionLogCurrencies;
+  start_timestamp: number;
+  end_timestamp: number;
+  query?: TransactionLogQuery;
+  count?: number;
+  continuation?: string;
+}
