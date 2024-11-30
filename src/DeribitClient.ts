@@ -58,6 +58,7 @@ type Params = {
   api_key: string;
   client_id: string;
   readonly?: boolean;
+  reconnect?: boolean;
   instance_id?: string;
   output_console?: boolean;
   indexes?: Indexes[];
@@ -107,6 +108,7 @@ export class DeribitClient {
   // End of predefined variables
 
   // WebSocket client and Event Emitter
+  // @ts-ignore
   public client: WebSocket;
   public ee: EventEmitter;
   // End of WebSocket client and Event Emitter
@@ -117,6 +119,7 @@ export class DeribitClient {
   public api_key: string; // API key
   public client_id: string; // API key ID
   public readonly: boolean | undefined;
+  public reconnect: boolean | undefined;
   public username: string | undefined;
   public acc_type: string | undefined;
   public user_id: number | undefined;
@@ -202,6 +205,14 @@ export class DeribitClient {
 
   public deribit_currencies_list: CurrenciesData = { list: [] };
 
+  private connect = () => {
+    this.client = new WebSocket(this.ws_api_url);
+    this.client.on('close', this.on_close);
+    this.client.on('open', this.on_open);
+    this.client.on('message', this.on_message);
+    this.client.on('error', this.on_error);
+  }
+
   constructor(params: Params) {
     const {
       api_env,
@@ -209,6 +220,7 @@ export class DeribitClient {
       client_id,
       output_console,
       readonly,
+      reconnect,
       indexes,
       instruments,
       instruments_with_orderbook,
@@ -234,9 +246,9 @@ export class DeribitClient {
     this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
     this.output_console = output_console;
     this.readonly = readonly;
+    this.reconnect = reconnect || true;
     this.api_key = api_key;
     this.client_id = client_id;
-    this.client = new WebSocket(this.ws_api_url);
     this.indexes = indexes;
     this.instruments = instruments;
     this.instruments_with_orderbook = instruments_with_orderbook;
@@ -254,6 +266,14 @@ export class DeribitClient {
     };
     this.on_close = () => {
       this.ee.emit('disconnected');
+      to_console(this, 'Connection closed');
+      if (this.reconnect) {
+        to_console(this, 'Reconnecting in 60 seconds');
+        setTimeout(() => {
+          to_console(this, 'Reconnecting...');
+          this.connect();
+        }, 60000);
+      }
       if (on_close) {
         on_close();
       }
@@ -296,10 +316,7 @@ export class DeribitClient {
       on_message(parsed as RpcMessage);
     };
 
-    this.client.on('close', this.on_close);
-    this.client.on('open', this.on_open);
-    this.client.on('message', this.on_message);
-    this.client.on('error', this.on_error);
+    this.connect();
   }
 
   // Getters

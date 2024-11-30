@@ -292,7 +292,7 @@ export function handle_rpc_subscription_message(
         2;
     }
 
-    console.log(context.book_data[instrument_name]);
+    // console.log(context.book_data[instrument_name]);
 
     context.ee.emit('book_updated', instrument_name);
     return true;
