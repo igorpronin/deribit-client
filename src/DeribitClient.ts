@@ -246,7 +246,7 @@ export class DeribitClient {
     this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
     this.output_console = output_console;
     this.readonly = readonly;
-    this.reconnect = reconnect || true;
+    this.reconnect = reconnect !== undefined ? reconnect : true;
     this.api_key = api_key;
     this.client_id = client_id;
     this.indexes = indexes;
