@@ -93,14 +93,14 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
   if (id === IDs.AccSummaries) {
     // console.log('AccSummaries');
     // console.log(msg);
-    hadle_opligatory_data_status(context, id);
     handle_get_account_summaries_message(context, msg as RpcAccSummariesMsg);
+    hadle_opligatory_data_status(context, id);
     return true;
   }
 
   if (id === IDs.GetCurrencies) {
-    hadle_opligatory_data_status(context, id);
     handle_get_currencies_message(context, msg as RpcGetCurrenciesMsg);
+    hadle_opligatory_data_status(context, id);
     // validate_if_instance_is_ready(context);
     return true;
   }
@@ -108,15 +108,15 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
   if (id === IDs.GetPositions) {
     // console.log('GetPositions');
     // console.log(msg);
-    hadle_opligatory_data_status(context, id);
     handle_get_positions_message(context, msg as RpcGetPositionsMsg);
+    hadle_opligatory_data_status(context, id);
     // validate_if_instance_is_ready(context);
     return true;
   }
 
   if (id.startsWith('get_instruments/')) {
-    hadle_opligatory_data_status(context, id);
     handle_get_instruments_message(context, msg as RpcGetInstrumentsMsg);
+    hadle_opligatory_data_status(context, id);
     // validate_if_instance_is_ready(context);
     if (is_instruments_list_ready(context)) {
       // with orderbook or not
