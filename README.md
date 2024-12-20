@@ -26,16 +26,17 @@ const client = new DeribitClient({
   instance_id: 'YOUR_INSTANCE_ID', // optional
   output_console: true, // optional, defaults to true
   readonly: true, // optional, defaults to false
+  reconnect: true, // optional, defaults to true
   
   // at least one of two options (indexes or instruments) required and shouldn't be empty:
   indexes: ['eth_usd', 'btc_usd'], // optional
-  instruments: [BTC-PERPETUAL, 'ETH-PERPETUAL', 'BTC_USDC'], // optional
+  instruments: ['BTC-PERPETUAL', 'ETH-PERPETUAL', 'BTC_USDC'], // optional
   instruments_with_orderbook: true, // optional, defaults to false
 
-  on_open: () => console.log('WebSocket opened'),
-  on_close: () => console.log('WebSocket closed'),
-  on_error: (error) => console.error('WebSocket error:', error),
-  on_message: (msg) => console.log('Received message:', msg),
+  on_open: () => console.log('WebSocket opened'), // optional
+  on_close: () => console.log('WebSocket closed'), // optional
+  on_error: (error) => console.error('WebSocket error:', error), // optional
+  on_message: (msg) => console.log('Received message:', msg), // required
 });
 ```
 

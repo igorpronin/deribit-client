@@ -61,11 +61,15 @@ type Params = {
   reconnect?: boolean;
   instance_id?: string;
   output_console?: boolean;
+  fetch_transactions_log_from?: string;
+  track_transactions_log?: boolean;
   indexes?: Indexes[];
   instruments?: string[];
   instruments_with_orderbook?: boolean;
+
   // TODO: implement orderbook_depth_price correct and clear processing, include to README.md
   orderbook_depth_price?: number;
+
   on_open?: () => void;
   on_close?: () => void;
   on_error?: (error?: Error) => void;
@@ -118,15 +122,15 @@ export class DeribitClient {
   public ws_api_url: string;
   public api_key: string; // API key
   public client_id: string; // API key ID
-  public readonly: boolean | undefined;
-  public reconnect: boolean | undefined;
+  public readonly: boolean;
+  public reconnect: boolean;
   public username: string | undefined;
   public acc_type: string | undefined;
   public user_id: number | undefined;
   public output_console: boolean | undefined = true;
   public indexes: Indexes[] | undefined;
   public instruments: string[] | undefined;
-  public instruments_with_orderbook: boolean | undefined;
+  public instruments_with_orderbook: boolean;
   public orderbook_depth_price: number | undefined;
   // End of user defined variables and connection attributes
 
@@ -245,13 +249,13 @@ export class DeribitClient {
     this.api_env = api_env;
     this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
     this.output_console = output_console;
-    this.readonly = readonly;
+    this.readonly = readonly !== undefined ? readonly : false;
     this.reconnect = reconnect !== undefined ? reconnect : true;
     this.api_key = api_key;
     this.client_id = client_id;
     this.indexes = indexes;
     this.instruments = instruments;
-    this.instruments_with_orderbook = instruments_with_orderbook;
+    this.instruments_with_orderbook = instruments_with_orderbook !== undefined ? instruments_with_orderbook : false;
     this.orderbook_depth_price = orderbook_depth_price;
     validate_user_requests(this);
 
