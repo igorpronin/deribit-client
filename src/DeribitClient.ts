@@ -24,6 +24,8 @@ import {
   TickerData,
   Position,
   Trade,
+  TransactionLogItem,
+  TransactionLogCurrencies,
 } from './types/deribit_objects';
 import {
   handle_rpc_error_response,
@@ -33,6 +35,7 @@ import {
 import { create_process_open_order } from './deribit_client_methods/actions';
 import { auth } from './deribit_client_methods/auth_requests_and_handlers';
 import { validate_user_requests, to_console } from './deribit_client_methods/utils';
+import moment from 'moment';
 
 type AuthData = {
   state: boolean;
@@ -132,6 +135,8 @@ export class DeribitClient {
   public instruments: string[] | undefined;
   public instruments_with_orderbook: boolean;
   public orderbook_depth_price: number | undefined;
+  public fetch_transactions_log_from: number | undefined;
+  public track_transactions_log: boolean | undefined;
   // End of user defined variables and connection attributes
 
   // Event handler functions
@@ -183,7 +188,14 @@ export class DeribitClient {
     by_ref_id: {},
   };
 
+  public currencies_in_work: Currencies[] = [];
+
   public trades: Trade[] = [];
+
+  public transactions_log: Partial<Record<TransactionLogCurrencies, {
+    by_id: Record<number, TransactionLogItem>;
+    list: TransactionLogItem[];
+  }>> = {};
 
   public user_changes: UserChanges[] = [];
 
@@ -229,6 +241,8 @@ export class DeribitClient {
       instruments,
       instruments_with_orderbook,
       orderbook_depth_price,
+      fetch_transactions_log_from,
+      track_transactions_log,
       on_open,
       on_close,
       on_message,
@@ -257,7 +271,22 @@ export class DeribitClient {
     this.instruments = instruments;
     this.instruments_with_orderbook = instruments_with_orderbook !== undefined ? instruments_with_orderbook : false;
     this.orderbook_depth_price = orderbook_depth_price;
+    this.track_transactions_log = track_transactions_log !== undefined ? track_transactions_log : false;
+    this.fetch_transactions_log_from = fetch_transactions_log_from ? (() => {
+      const parsedDate = moment(fetch_transactions_log_from);
+      if (!parsedDate.isValid()) {
+        throw new Error(`Invalid date format for fetch_transactions_log_from: ${fetch_transactions_log_from}`);
+      }
+      return parsedDate.unix() * 1000;
+    })() : undefined;
     validate_user_requests(this);
+
+    this.instruments?.forEach((instrument) => {
+      const currency = instrument.split('-')[0] as Currencies;
+      if (!this.currencies_in_work.includes(currency)) {
+        this.currencies_in_work.push(currency);
+      }
+    })
 
     this.ee = new EventEmitter();
 
@@ -375,4 +404,6 @@ export class DeribitClient {
   public get_trades = () => this.trades;
 
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
+
+  public get_transactions_log = (currency: TransactionLogCurrencies) => this.transactions_log[currency];
 }

@@ -16,8 +16,9 @@ import {
   UserChanges,
   UserPortfolioByCurrency,
   BookSubscriptionData,
+  RpcGetTransactionLogMsg,
 } from '../types/types';
-import { Indexes, TickerData } from '../types/deribit_objects';
+import { Indexes, TickerData, TransactionLogCurrencies } from '../types/deribit_objects';
 import { calculate_future_apr_and_premium, calculate_premium } from '../helpers';
 import { DeribitClient } from '../DeribitClient';
 import {
@@ -27,6 +28,8 @@ import {
   process_request_obligatory_subscriptions,
   process_get_positions,
   process_get_account_summaries,
+  process_transaction_log_on_start,
+  process_transaction_log_hourly,
 } from './actions';
 import { handle_auth_message } from './auth_requests_and_handlers';
 import {
@@ -36,6 +39,7 @@ import {
   handle_get_currencies_message,
   handle_get_positions_message,
   handle_open_order_message,
+  handle_get_transaction_log_message,
 } from './message_handlers';
 import {
   to_console,
@@ -65,6 +69,8 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
     process_request_obligatory_data(context);
     process_request_obligatory_subscriptions(context); // TODO: not implemented yet
     process_subscribe_requested_indexes(context);
+    process_transaction_log_on_start(context);
+    process_transaction_log_hourly(context);
     init_pending_subscriptions_check(context);
     return true;
   }
@@ -122,6 +128,11 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
       // with orderbook or not
       process_subscribe_requested_instruments(context);
     }
+    return true;
+  }
+
+  if (id === IDs.GetTransactionLog) {
+    handle_get_transaction_log_message(context, msg as RpcGetTransactionLogMsg);
     return true;
   }
 

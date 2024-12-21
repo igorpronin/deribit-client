@@ -8,6 +8,9 @@ import {
   RpcGetPositionsMsg,
   RpcOpenOrderMsg,
   RpcAccSummariesMsg,
+  RpcGetTransactionLogMsg,
+  TransactionLogItem,
+  TransactionLogCurrencies,
 } from '../types/types';
 import { remove_elements_from_existing_array } from '@igorpronin/utils';
 import { DeribitClient } from '../DeribitClient';
@@ -109,5 +112,32 @@ export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOr
   context.ee.emit('order_updated', label);
   if (order_state === 'filled') {
     context.ee.emit('order_filled', label);
+  }
+}
+
+export function handle_get_transaction_log_message(context: DeribitClient, msg: RpcGetTransactionLogMsg) {
+  const { result } = msg;
+  const list = result.logs as TransactionLogItem[];
+  let has_new_transactions = false;
+  let updated_currencies: TransactionLogCurrencies[] = [];
+  list.forEach((transaction) => {
+    const currency = transaction.currency as TransactionLogCurrencies;
+    if (!context.transactions_log[currency]) {
+      context.transactions_log[currency] = {
+        by_id: {},
+        list: [],
+      };
+    }
+    if (!context.transactions_log[currency].by_id[transaction.id]) {
+      context.transactions_log[currency].by_id[transaction.id] = transaction;
+      context.transactions_log[currency].list.push(transaction);
+      has_new_transactions = true;
+      if (!updated_currencies.includes(currency)) {
+        updated_currencies.push(currency);
+      }
+    }
+  });
+  if (has_new_transactions) {
+    context.ee.emit('transaction_log_updated', updated_currencies);
   }
 }

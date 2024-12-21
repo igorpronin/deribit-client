@@ -7,6 +7,7 @@ import {
   AccountSummary,
   Instrument,
   CurrencyData,
+  TransactionLogItem,
 } from './deribit_objects';
 export * from './deribit_objects';
 
@@ -240,6 +241,14 @@ export interface RpcGetCurrenciesMsg extends RpcSuccessResponse {
 export interface RpcGetPositionsMsg extends RpcSuccessResponse {
   id: IDs.GetPositions;
   result: Position[];
+}
+
+export interface RpcGetTransactionLogMsg extends RpcSuccessResponse {
+  id: IDs.GetTransactionLog;
+  result: {
+    logs: TransactionLogItem[];
+    continuation: number | null;
+  };
 }
 
 // Root types and interfaces

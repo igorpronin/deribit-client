@@ -348,7 +348,11 @@ type TransactionLogQuery =
   | 'block_trade'
   | 'swap';
 
-type TransactionLogCurrencies = 'BTC' | 'ETH' | 'USDC' | 'USDT' | 'EURR';
+type TransactionLogType = 'trade' | 'deposit' | 'withdrawal' | 'settlement' | 'delivery' | 'transfer' | 'swap' | 'correction';
+
+type TransactionLogSide = 'short' | 'long' | 'close sell' | 'close buy' | 'open sell' | 'open buy' | 'close sell' | 'close buy';
+
+export type TransactionLogCurrencies = 'BTC' | 'ETH' | 'USDC' | 'USDT' | 'EURR';
 
 export interface TransactionLogParams {
   currency: TransactionLogCurrencies;
@@ -357,4 +361,32 @@ export interface TransactionLogParams {
   query?: TransactionLogQuery;
   count?: number;
   continuation?: string;
+}
+
+export interface TransactionLogItem {
+  username: string;
+  user_seq: number;
+  user_role: 'maker' | 'taker';
+  user_id: number;
+  type: TransactionLogType;
+  trade_id: string;
+  timestamp: number;
+  side: TransactionLogSide;
+  profit_as_cashflow: boolean;
+  price_currency: string;
+  price: number;
+  position: number;
+  order_id: string;
+  mark_price: number;
+  interest_pl: number;
+  instrument_name: string;
+  info: string;
+  id: number;
+  equity: number;
+  currency: TransactionLogCurrencies;
+  commission: number;
+  change: number;
+  cashflow: number;
+  balance: number;
+  amount: number;
 }

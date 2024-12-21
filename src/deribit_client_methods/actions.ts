@@ -12,10 +12,13 @@ import {
   Subscriptions,
   Indexes,
   OrderType,
+  TransactionLogCurrencies,
 } from '../types/types';
 import { DeribitClient } from '../DeribitClient';
 import { to_console } from './utils';
-import { request_subscribe } from '../rpc_requests';
+import { request_subscribe, request_get_transaction_log } from '../rpc_requests';
+import moment from 'moment';
+import cron from 'node-cron'; 
 
 export function process_subscribe(context: DeribitClient, subscription: Subscriptions) {
   if (
@@ -112,6 +115,38 @@ export function process_request_obligatory_data(context: DeribitClient) {
 
   const spot_id = process_get_instruments_list(context, 'spot');
   context.obligatory_data_pending.push(spot_id);
+}
+
+export function process_request_get_transaction_log(context: DeribitClient, currency: TransactionLogCurrencies, start_timestamp: number) {
+  if (!context.auth_data.state) {
+    throw new Error('Not authorized');
+  }
+  const { id } = request_get_transaction_log(context.client, {
+    currency,
+    start_timestamp,
+    end_timestamp: moment().unix() * 1000,
+  });
+  return id;
+}
+
+export function process_transaction_log_on_start(context: DeribitClient) {
+  if (context.fetch_transactions_log_from) {
+    context.currencies_in_work.forEach((currency) => {
+      if (context.fetch_transactions_log_from) {
+        process_request_get_transaction_log(context, currency as TransactionLogCurrencies, context.fetch_transactions_log_from);
+      }
+    });
+  }
+}
+
+export function process_transaction_log_hourly(context: DeribitClient) {
+  if (context.track_transactions_log) {
+    cron.schedule('0 * * * *', () => {
+      context.currencies_in_work.forEach((currency) => {
+        process_request_get_transaction_log(context, currency as TransactionLogCurrencies, moment().subtract(1, 'hour').unix() * 1000);
+      });
+    });
+  }
 }
 
 // Public method, calls from DeribitClient class

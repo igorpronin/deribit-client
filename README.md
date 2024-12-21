@@ -27,6 +27,8 @@ const client = new DeribitClient({
   output_console: true, // optional, defaults to true
   readonly: true, // optional, defaults to false
   reconnect: true, // optional, defaults to true
+  fetch_transactions_log_from: '2024-12-13 00:00:00', // optional, ISO 8601 format (YYYY-MM-DD HH:mm:ss or YYYY-MM-DD or other ISO 8601 format values)
+  track_transactions_log: true, // optional, defaults to false
   
   // at least one of two options (indexes or instruments) required and shouldn't be empty:
   indexes: ['eth_usd', 'btc_usd'], // optional
@@ -75,6 +77,7 @@ client.ee.on('order_filled', (order_id: string) => console.log('Order filled!', 
 client.ee.on('account_summaries_updated', () => console.log('Account summaries updated!'));
 client.ee.on('disconnected', () => console.log('Disconnected!'));
 client.ee.on('book_updated', (instrument_name: string) => console.log('Book updated!', instrument_name));
+client.ee.on('transaction_log_updated', (currencies: TransactionLogCurrencies[]) => console.log('Transaction log updated!', currencies));
 ```
 
 ## Public Methods
@@ -141,6 +144,9 @@ Returns a boolean indicating whether there are any pending orders.
 
 #### process_open_order(params: OrderParams)
 Opens a new order with the specified parameters.
+
+#### get_transactions_log(currency: TransactionLogCurrencies)
+Returns the transaction log for the specified currency.
 
 ## Contacts
 
