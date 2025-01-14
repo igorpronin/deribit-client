@@ -17,8 +17,9 @@ import {
   UserPortfolioByCurrency,
   BookSubscriptionData,
   RpcGetTransactionLogMsg,
+  RpcEditOrderMsg,
 } from '../types/types';
-import { Indexes, TickerData, TransactionLogCurrencies } from '../types/deribit_objects';
+import { Indexes, Order, TickerData, TransactionLogCurrencies } from '../types/deribit_objects';
 import { calculate_future_apr_and_premium, calculate_premium } from '../helpers';
 import { DeribitClient } from '../DeribitClient';
 import {
@@ -40,6 +41,7 @@ import {
   handle_get_positions_message,
   handle_open_order_message,
   handle_get_transaction_log_message,
+  handle_edit_order_message,
 } from './message_handlers';
 import {
   to_console,
@@ -91,6 +93,13 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
 
   if (id.startsWith('o/')) {
     handle_open_order_message(context, msg as RpcOpenOrderMsg);
+    process_get_account_summaries(context);
+    process_get_positions(context);
+    return true;
+  }
+
+  if (id.startsWith('eo/')) {
+    handle_edit_order_message(context, msg as RpcEditOrderMsg);
     process_get_account_summaries(context);
     process_get_positions(context);
     return true;
@@ -303,40 +312,70 @@ export function handle_rpc_subscription_message(
         2;
     }
 
-    // console.log(context.book_data[instrument_name]);
-
     context.ee.emit('book_updated', instrument_name);
     return true;
   }
 
   if (channel.startsWith('user.changes')) {
     const changes = data as UserChanges;
-    const { trades, positions } = changes;
+    const { trades, positions, orders } = changes;
     context.user_changes.push(changes);
     context.trades.push(...trades);
     trades.forEach((trade) => {
-      const { label } = trade;
-      if (!label) {
+      const { label: id, fee, amount } = trade;
+      const order_data = context.orders.all[id];
+      if (!id) {
         to_console(
           context,
-          `Order's trade has no label, trading from an external source is not recommended`,
+          `Order's trade has no label, trading from an external source is not recommended with connected api`,
           true,
         );
-      } else if (!context.orders.all[label]) {
+      } else if (!order_data) {
         to_console(
           context,
-          `Order with label ${label} not found, the trade proceed from other api client`,
+          `Order with label ${id} not found, the trade proceed from other api client`,
           true,
         );
       } else {
-        context.orders.all[label].trades.push(trade);
+        order_data.total_fee += fee;
+        order_data.traded_amount += amount;
+        order_data.trades.push(trade);
       }
     });
     positions.forEach((position) => {
       context.positions[position.instrument_name] = position;
       context.ee.emit('position_updated', position.instrument_name);
     });
-    // TODO: handle orders (finally)
+    orders.forEach((order: Order) => {
+      const {
+        label: id,
+        order_id: ref_id,
+        order_state,
+        creation_timestamp,
+        last_update_timestamp,
+        average_price,
+      } = order;
+      const order_data = context.orders.all[id];
+      order_data.created_at = creation_timestamp;
+      order_data.ref_id = ref_id;
+      // TODO: think here if it could match different updates at the same time, if so, here will be an issue
+      if (!order_data.updated_at || last_update_timestamp > order_data.updated_at) {
+        order_data.updated_at = last_update_timestamp;
+        order_data.last_success_message_result = order;
+        order_data.state = order_state;
+        order_data.average_price = average_price ?? null;
+        context.ee.emit('order_updated', id);
+        if (order_state === 'filled' || order_state === 'cancelled' || order_state === 'rejected') {
+          context.ee.emit('order_closed', id);
+          order_data.closed_at = last_update_timestamp;
+          to_console(context, `Order closed: ${id}`);
+        }
+        if (order_state === 'filled') {
+          context.ee.emit('order_filled', id);
+          to_console(context, `Order filled: ${id}`);
+        }
+      }
+    });
     return true;
   }
 

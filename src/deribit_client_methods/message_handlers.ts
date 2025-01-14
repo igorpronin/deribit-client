@@ -11,6 +11,7 @@ import {
   RpcGetTransactionLogMsg,
   TransactionLogItem,
   TransactionLogCurrencies,
+  RpcEditOrderMsg,
 } from '../types/types';
 import { remove_elements_from_existing_array } from '@igorpronin/utils';
 import { DeribitClient } from '../DeribitClient';
@@ -72,50 +73,51 @@ export function handle_get_positions_message(context: DeribitClient, msg: RpcGet
 
 export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOrderMsg) {
   const id = msg.id.split('/')[1];
+
+  to_console(context, `Order opened successfully: ${id}`);
+
   const order_data = context.orders.all[id];
 
   order_data.is_pending = false;
   context.orders.pending_orders_amount--;
   const order = msg.result.order;
-  const trades = msg.result.trades;
 
-  const { order_id, order_state, label, last_update_timestamp } = order;
+  const { order_id, order_state, last_update_timestamp, creation_timestamp, average_price } = order;
+  order_data.ref_id = order_id;
 
-  order_data.order_rpc_message_results.push(order);
   if (!context.orders.by_ref_id[order_id]) {
     context.orders.by_ref_id[order_id] = order_data;
   }
-  // TODO think here a lot, if it is safe or not
-  if (!order_data.state) {
-    order_data.state = order_state;
-  }
-  // TODO warning! order_state not updates here if it is not null already!!
-  const is_closing_states =
-    order_state === 'filled' || order_state === 'rejected' || order_state === 'cancelled';
 
-  // TODO thank here, probably, move it to subscription handling
-  if (is_closing_states) {
+  order_data.created_at = creation_timestamp;
+  if (!order_data.updated_at) {
+    order_data.updated_at = last_update_timestamp;
+    order_data.last_success_message_result = order;
     order_data.state = order_state;
-    order_data.closed_timestamp = last_update_timestamp;
-    let total_amount = 0;
-    let total_sum = 0;
-    let total_fee = 0;
-    trades.forEach((trade) => {
-      total_amount += trade.amount;
-      total_sum += trade.amount * trade.price;
-      total_fee += trade.fee;
-    });
-    order_data.average_price = total_sum / total_amount;
-    order_data.traded_amount = total_amount;
-    order_data.total_fee = total_fee;
-  }
-  context.ee.emit('order_updated', label);
-  if (order_state === 'filled') {
-    context.ee.emit('order_filled', label);
+    order_data.average_price = average_price ?? null;
+    context.ee.emit('order_updated', id);
+    if (order_state === 'filled' || order_state === 'cancelled' || order_state === 'rejected') {
+      context.ee.emit('order_closed', id);
+      order_data.closed_at = last_update_timestamp;
+      to_console(context, `Order closed: ${id}`);
+    }
+    if (order_state === 'filled') {
+      context.ee.emit('order_filled', id);
+      to_console(context, `Order filled: ${id}`);
+    }
   }
 }
 
-export function handle_get_transaction_log_message(context: DeribitClient, msg: RpcGetTransactionLogMsg) {
+export function handle_edit_order_message(context: DeribitClient, msg: RpcEditOrderMsg) {
+  const id = msg.id.split('/')[1];
+
+  to_console(context, `Order ${id} edited successfully`);
+}
+
+export function handle_get_transaction_log_message(
+  context: DeribitClient,
+  msg: RpcGetTransactionLogMsg,
+) {
   const { result } = msg;
   const list = result.logs as TransactionLogItem[];
   let has_new_transactions = false;

@@ -77,6 +77,7 @@ client.ee.on('order_filled', (order_id: string) => console.log('Order filled!', 
 client.ee.on('account_summaries_updated', () => console.log('Account summaries updated!'));
 client.ee.on('disconnected', () => console.log('Disconnected!'));
 client.ee.on('book_updated', (instrument_name: string) => console.log('Book updated!', instrument_name));
+client.ee.on('order_closed', (order_id: string) => console.log('Order closed!', order_id)); // Closing states: filled, cancelled, rejected
 client.ee.on('transaction_log_updated', (currencies: TransactionLogCurrencies[]) => console.log('Transaction log updated!', currencies));
 ```
 
@@ -144,6 +145,9 @@ Returns a boolean indicating whether there are any pending orders.
 
 #### process_open_order(params: OrderParams)
 Opens a new order with the specified parameters.
+
+#### process_edit_order_price(params: EditOrderPriceParams)
+Edits the price of the specified order.
 
 #### get_transactions_log(currency: TransactionLogCurrencies)
 Returns the transaction log for the specified currency.

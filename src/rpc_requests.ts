@@ -6,6 +6,7 @@ import {
   Subscriptions,
   OrderParams,
   TransactionLogParams,
+  EditOrderParams,
 } from './types/types';
 import { generate_random_id } from '@igorpronin/utils';
 
@@ -81,6 +82,19 @@ export const request_open_order = (
     time_in_force,
   };
   const msg = custom_request(client, `private/${direction}`, `o/${id}`, params);
+  return { id, msg };
+};
+
+export const request_edit_order = (
+  client: WebSocket,
+  { id, ref_id, price, amount }: EditOrderParams,
+): { id: string; msg: any } => {
+  const params = {
+    order_id: ref_id,
+    price,
+    amount,
+  };
+  const msg = custom_request(client, PrivateMethods.EditOrder, `eo/${id}`, params);
   return { id, msg };
 };
 

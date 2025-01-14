@@ -2,6 +2,7 @@ import { RpcError, RpcMessage, ScopeTitle, Scope } from '../types/types';
 import { DeribitClient } from '../DeribitClient';
 import { remove_elements_from_existing_array } from '@igorpronin/utils';
 import { re_auth } from './auth_requests_and_handlers';
+import { obligatory_subscriptions } from './actions';
 
 export function to_console(
   context: DeribitClient,
@@ -101,6 +102,26 @@ export function process_scope(context: DeribitClient, scope: string) {
     context.auth_data.scope.processed[parts[0] as ScopeTitle] = parts[1] as Scope;
     if (parts[0] === 'trade') {
       context.auth_data.trade_permit = parts[1] === 'read_write';
+    }
+  });
+}
+
+export function validate_auth_and_trade_permit(context: DeribitClient) {
+  if (!context.auth_data.state) {
+    throw new Error('Not authorized');
+  }
+  if (context.readonly) {
+    throw new Error('Instance is in readonly mode');
+  }
+  if (!context.auth_data.trade_permit) {
+    throw new Error('Trade "read_write" scope is not granted');
+  }
+}
+
+export function validate_obligatory_subscriptions(context: DeribitClient) {
+  obligatory_subscriptions.forEach((subscription) => {
+    if (!context.subscriptions_active.includes(`s/${subscription}`)) {
+      throw new Error(`Obligatory subscription ${subscription} is not active`);
     }
   });
 }

@@ -69,6 +69,7 @@ export enum PrivateMethods {
   GetOrderState = 'private/get_order_state',
   GetPositions = 'private/get_positions',
   GetTransactionLog = 'private/get_transaction_log',
+  EditOrder = 'private/edit',
 }
 
 export type Methods = PublicMethods | PrivateMethods;
@@ -123,6 +124,18 @@ export type OrderStates =
 
 export type OrderDirections = 'buy' | 'sell';
 
+export interface EditOrderPriceParams {
+  id: string;
+  price: number;
+}
+
+export interface EditOrderParams {
+  id: string;
+  ref_id: string;
+  price?: number;
+  amount: number;
+}
+
 export interface OrderParams {
   instrument_name: string;
   amount: number;
@@ -133,17 +146,23 @@ export interface OrderParams {
 }
 
 export interface OrderData {
-  initial?: OrderParams;
+  initial: OrderParams;
+  edit_history: EditOrderParams[];
+  id: string;
+  ref_id?: string;
   is_pending: boolean;
   is_error: boolean;
-  rpc_error_message?: RpcMsg;
-  order_rpc_message_results: Order[];
+  created_at?: number;
+  updated_at?: number;
+  closed_at?: number;
+  last_success_message_result?: Order; // created or changed message result
+  rpc_error_last_message?: RpcMsg;
   state: null | OrderStates;
   trades: Trade[];
-  closed_timestamp: number | null;
   average_price: number | null;
-  traded_amount: number | null;
-  total_fee: number | null;
+  initial_amount: number;
+  traded_amount: number;
+  total_fee: number;
 }
 
 export type SubscriptionData =
@@ -206,6 +225,14 @@ export interface RpcSubscribedMsg extends RpcSuccessResponse {
 // https://docs.deribit.com/#private-sell
 export interface RpcOpenOrderMsg extends RpcSuccessResponse {
   id: `o/${string}`;
+  result: {
+    trades: Trade[];
+    order: Order;
+  };
+}
+
+export interface RpcEditOrderMsg extends RpcSuccessResponse {
+  id: `eo/${string}`;
   result: {
     trades: Trade[];
     order: Order;

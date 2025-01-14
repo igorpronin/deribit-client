@@ -348,9 +348,25 @@ type TransactionLogQuery =
   | 'block_trade'
   | 'swap';
 
-type TransactionLogType = 'trade' | 'deposit' | 'withdrawal' | 'settlement' | 'delivery' | 'transfer' | 'swap' | 'correction';
+type TransactionLogType =
+  | 'trade'
+  | 'deposit'
+  | 'withdrawal'
+  | 'settlement'
+  | 'delivery'
+  | 'transfer'
+  | 'swap'
+  | 'correction';
 
-type TransactionLogSide = 'short' | 'long' | 'close sell' | 'close buy' | 'open sell' | 'open buy' | 'close sell' | 'close buy';
+type TransactionLogSide =
+  | 'short'
+  | 'long'
+  | 'close sell'
+  | 'close buy'
+  | 'open sell'
+  | 'open buy'
+  | 'close sell'
+  | 'close buy';
 
 export type TransactionLogCurrencies = 'BTC' | 'ETH' | 'USDC' | 'USDT' | 'EURR';
 

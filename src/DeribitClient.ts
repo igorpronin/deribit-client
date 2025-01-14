@@ -15,6 +15,7 @@ import {
   Scope,
   UserPortfolioByCurrency,
   UserChanges,
+  EditOrderPriceParams,
 } from './types/types';
 import {
   AccountSummary,
@@ -32,7 +33,10 @@ import {
   handle_rpc_subscription_message,
   handle_rpc_success_response,
 } from './deribit_client_methods/root_handlers';
-import { create_process_open_order } from './deribit_client_methods/actions';
+import {
+  create_process_edit_order_price,
+  create_process_open_order,
+} from './deribit_client_methods/actions';
 import { auth } from './deribit_client_methods/auth_requests_and_handlers';
 import { validate_user_requests, to_console } from './deribit_client_methods/utils';
 import moment from 'moment';
@@ -170,6 +174,7 @@ export class DeribitClient {
 
   // Actions
   public process_open_order: (params: OrderParams) => string;
+  public process_edit_order_price: (params: EditOrderPriceParams) => string;
   // End of Actions
 
   // Subscriptions and obligatory data
@@ -192,10 +197,15 @@ export class DeribitClient {
 
   public trades: Trade[] = [];
 
-  public transactions_log: Partial<Record<TransactionLogCurrencies, {
-    by_id: Record<number, TransactionLogItem>;
-    list: TransactionLogItem[];
-  }>> = {};
+  public transactions_log: Partial<
+    Record<
+      TransactionLogCurrencies,
+      {
+        by_id: Record<number, TransactionLogItem>;
+        list: TransactionLogItem[];
+      }
+    >
+  > = {};
 
   public user_changes: UserChanges[] = [];
 
@@ -227,7 +237,7 @@ export class DeribitClient {
     this.client.on('open', this.on_open);
     this.client.on('message', this.on_message);
     this.client.on('error', this.on_error);
-  }
+  };
 
   constructor(params: Params) {
     const {
@@ -255,6 +265,7 @@ export class DeribitClient {
 
     // Applying public actions
     this.process_open_order = create_process_open_order(this);
+    this.process_edit_order_price = create_process_edit_order_price(this);
     // End of Applying public actions
 
     if (params.instance_id) {
@@ -269,16 +280,22 @@ export class DeribitClient {
     this.client_id = client_id;
     this.indexes = indexes;
     this.instruments = instruments;
-    this.instruments_with_orderbook = instruments_with_orderbook !== undefined ? instruments_with_orderbook : false;
+    this.instruments_with_orderbook =
+      instruments_with_orderbook !== undefined ? instruments_with_orderbook : false;
     this.orderbook_depth_price = orderbook_depth_price;
-    this.track_transactions_log = track_transactions_log !== undefined ? track_transactions_log : false;
-    this.fetch_transactions_log_from = fetch_transactions_log_from ? (() => {
-      const parsedDate = moment(fetch_transactions_log_from);
-      if (!parsedDate.isValid()) {
-        throw new Error(`Invalid date format for fetch_transactions_log_from: ${fetch_transactions_log_from}`);
-      }
-      return parsedDate.unix() * 1000;
-    })() : undefined;
+    this.track_transactions_log =
+      track_transactions_log !== undefined ? track_transactions_log : false;
+    this.fetch_transactions_log_from = fetch_transactions_log_from
+      ? (() => {
+          const parsedDate = moment(fetch_transactions_log_from);
+          if (!parsedDate.isValid()) {
+            throw new Error(
+              `Invalid date format for fetch_transactions_log_from: ${fetch_transactions_log_from}`,
+            );
+          }
+          return parsedDate.unix() * 1000;
+        })()
+      : undefined;
     validate_user_requests(this);
 
     this.instruments?.forEach((instrument) => {
@@ -286,7 +303,7 @@ export class DeribitClient {
       if (!this.currencies_in_work.includes(currency)) {
         this.currencies_in_work.push(currency);
       }
-    })
+    });
 
     this.ee = new EventEmitter();
 
@@ -405,5 +422,6 @@ export class DeribitClient {
 
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 
-  public get_transactions_log = (currency: TransactionLogCurrencies) => this.transactions_log[currency];
+  public get_transactions_log = (currency: TransactionLogCurrencies) =>
+    this.transactions_log[currency];
 }
