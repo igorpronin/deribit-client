@@ -90,22 +90,6 @@ export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOr
   }
 
   order_data.created_at = creation_timestamp;
-  if (!order_data.updated_at) {
-    order_data.updated_at = last_update_timestamp;
-    order_data.last_success_message_result = order;
-    order_data.state = order_state;
-    order_data.average_price = average_price ?? null;
-    context.ee.emit('order_updated', id);
-    if (order_state === 'filled' || order_state === 'cancelled' || order_state === 'rejected') {
-      context.ee.emit('order_closed', id);
-      order_data.closed_at = last_update_timestamp;
-      to_console(context, `Order closed: ${id}`);
-    }
-    if (order_state === 'filled') {
-      context.ee.emit('order_filled', id);
-      to_console(context, `Order filled: ${id}`);
-    }
-  }
 }
 
 export function handle_edit_order_message(context: DeribitClient, msg: RpcEditOrderMsg) {
