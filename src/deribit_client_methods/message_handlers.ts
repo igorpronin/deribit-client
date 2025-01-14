@@ -82,7 +82,7 @@ export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOr
   context.orders.pending_orders_amount--;
   const order = msg.result.order;
 
-  const { order_id, order_state, last_update_timestamp, creation_timestamp, average_price } = order;
+  const { order_id, creation_timestamp } = order;
   order_data.ref_id = order_id;
 
   if (!context.orders.by_ref_id[order_id]) {
