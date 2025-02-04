@@ -18,7 +18,9 @@ export function auth(context: DeribitClient) {
 }
 
 export function re_auth(context: DeribitClient) {
-  to_console(context, `Deribit re authorisation for the client ${context.client_id} processing...`);
+  if (!context.silent_reauth) {
+    to_console(context, `Deribit re authorisation for the client ${context.client_id} processing...`);
+  }
   const id = IDs.ReAuth;
   const msg = custom_request(context.client, PublicMethods.Auth, id, {
     grant_type: 'refresh_token',
@@ -55,5 +57,8 @@ export function handle_auth_message(context: DeribitClient, msg: RpcAuthMsg, is_
     context.ee.emit('authorized');
   }
   context.auth_data.state = true;
+  if (is_re_auth && context.silent_reauth) {
+    return;
+  }
   to_console(context, success_msg);
 }

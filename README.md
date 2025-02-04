@@ -25,6 +25,7 @@ const client = new DeribitClient({
   client_id: 'YOUR_DERIBIT_CLIENT_ID',
   instance_id: 'YOUR_INSTANCE_ID', // optional
   output_console: true, // optional, defaults to true
+  silent_reauth: false, // optional, defaults to true, if true, re-authorisation will not be shown in the console
   readonly: true, // optional, defaults to false
   reconnect: true, // optional, defaults to true
   fetch_transactions_log_from: '2024-12-13 00:00:00', // optional, ISO 8601 format (YYYY-MM-DD HH:mm:ss or YYYY-MM-DD or other ISO 8601 format values)

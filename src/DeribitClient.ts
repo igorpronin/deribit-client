@@ -68,6 +68,7 @@ type Params = {
   reconnect?: boolean;
   instance_id?: string;
   output_console?: boolean;
+  silent_reauth?: boolean;
   fetch_transactions_log_from?: string;
   track_transactions_log?: boolean;
   indexes?: Indexes[];
@@ -134,7 +135,8 @@ export class DeribitClient {
   public username: string | undefined;
   public acc_type: string | undefined;
   public user_id: number | undefined;
-  public output_console: boolean | undefined = true;
+  public output_console: boolean | undefined;
+  public silent_reauth: boolean | undefined;
   public indexes: Indexes[] | undefined;
   public instruments: string[] | undefined;
   public instruments_with_orderbook: boolean;
@@ -245,6 +247,7 @@ export class DeribitClient {
       api_key,
       client_id,
       output_console,
+      silent_reauth,
       readonly,
       reconnect,
       indexes,
@@ -273,7 +276,8 @@ export class DeribitClient {
     }
     this.api_env = api_env;
     this.ws_api_url = api_env === 'prod' ? WssApiUrls.prod : WssApiUrls.test;
-    this.output_console = output_console;
+    this.output_console = output_console !== undefined ? output_console : true;
+    this.silent_reauth = silent_reauth !== undefined ? silent_reauth : true;
     this.readonly = readonly !== undefined ? readonly : false;
     this.reconnect = reconnect !== undefined ? reconnect : true;
     this.api_key = api_key;
