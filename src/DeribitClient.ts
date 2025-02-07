@@ -1,6 +1,5 @@
 import WebSocket from 'ws';
 import EventEmitter from 'events';
-import { is_value_in_enum } from '@igorpronin/utils';
 import {
   Currencies,
   RpcMessage,
@@ -16,6 +15,7 @@ import {
   UserPortfolioByCurrency,
   UserChanges,
   EditOrderPriceParams,
+  ApiEnv,
 } from './types/types';
 import {
   AccountSummary,
@@ -40,6 +40,7 @@ import {
 import { auth } from './deribit_client_methods/auth_requests_and_handlers';
 import { validate_user_requests, to_console } from './deribit_client_methods/utils';
 import moment from 'moment';
+import { validate_api_env } from './helpers';
 
 type AuthData = {
   state: boolean;
@@ -57,8 +58,6 @@ enum WssApiUrls {
   prod = 'wss://www.deribit.com/ws/api/v2',
   test = 'wss://test.deribit.com/ws/api/v2',
 }
-
-type ApiEnv = 'prod' | 'test';
 
 type Params = {
   api_env: ApiEnv;
@@ -262,9 +261,7 @@ export class DeribitClient {
       on_error,
     } = params;
 
-    if (!api_env || !is_value_in_enum(api_env, ['prod', 'test'])) {
-      throw new Error('Invalid API environment');
-    }
+    validate_api_env(api_env);
 
     // Applying public actions
     this.process_open_order = create_process_open_order(this);

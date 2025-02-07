@@ -1,3 +1,5 @@
+import { ApiEnv } from './types/types';
+
 export const starts_with_prefix = (array: string[], variable: string): boolean => {
   return array.some((prefix) => variable.startsWith(prefix));
 };
@@ -29,4 +31,11 @@ export const calculate_premium = (index_price: number, mark_price: number) => {
   const premium_relative = premium_absolute / index_price;
 
   return { premium_absolute, premium_relative };
+};
+
+export const validate_api_env = (api_env: ApiEnv) => {
+  const is_valid = api_env === 'prod' || api_env === 'test';
+  if (!is_valid) {
+    throw new Error('Invalid API environment');
+  }
 };

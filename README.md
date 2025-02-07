@@ -17,6 +17,7 @@ import {
   Kinds,
 } from '@igorpronin/deribit-client';
 
+// WebSocket client usage example
 // BTC-PERPETUAL - future contract format
 // BTC_USDC - spot format
 const client = new DeribitClient({
@@ -41,6 +42,12 @@ const client = new DeribitClient({
   on_error: (error) => console.error('WebSocket error:', error), // optional
   on_message: (msg) => console.log('Received message:', msg), // required
 });
+
+// HTTP client usage example (only public methods yet, dev in progress)
+const http_client = new DeribitClientHTTP({ api_env: 'prod' });
+// Currencies: 'BTC' | 'ETH' | 'USDC' | 'USDT' | 'EURR' | 'any'
+// Kinds: 'future' | 'option' | 'spot' | 'future_combo' | 'option_combo'
+http_client.get_instruments_list('BTC', 'option').then(console.log);
 ```
 
 ## Open orders

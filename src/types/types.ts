@@ -308,3 +308,5 @@ export interface RpcMsg {
 export type RpcResponseMessage = RpcSuccessResponse | RpcErrorResponse;
 
 export type RpcMessage = RpcResponseMessage | RpcSubscriptionMessage;
+
+export type ApiEnv = 'prod' | 'test';
