@@ -18,6 +18,7 @@ import {
   BookSubscriptionData,
   RpcGetTransactionLogMsg,
   RpcEditOrderMsg,
+  RpcCancelOrderMsg,
 } from '../types/types';
 import { Indexes, Order, TickerData, TransactionLogCurrencies } from '../types/deribit_objects';
 import { calculate_future_apr_and_premium, calculate_premium } from '../helpers';
@@ -42,6 +43,7 @@ import {
   handle_open_order_message,
   handle_get_transaction_log_message,
   handle_edit_order_message,
+  handle_cancel_order_message,
 } from './message_handlers';
 import {
   to_console,
@@ -100,6 +102,13 @@ export function handle_rpc_success_response(context: DeribitClient, msg: RpcSucc
 
   if (id.startsWith('eo/')) {
     handle_edit_order_message(context, msg as RpcEditOrderMsg);
+    process_get_account_summaries(context);
+    process_get_positions(context);
+    return true;
+  }
+
+  if (id.startsWith('co/')) {
+    handle_cancel_order_message(context, msg as RpcCancelOrderMsg);
     process_get_account_summaries(context);
     process_get_positions(context);
     return true;
@@ -322,7 +331,7 @@ export function handle_rpc_subscription_message(
     context.user_changes.push(changes);
     context.trades.push(...trades);
     trades.forEach((trade) => {
-      const { label: id, fee, amount } = trade;
+      const { trade_id, label: id, fee, amount } = trade;
       const order_data = context.orders.all[id];
       if (!id) {
         to_console(
@@ -340,6 +349,10 @@ export function handle_rpc_subscription_message(
         order_data.total_fee += fee;
         order_data.traded_amount += amount;
         order_data.trades.push(trade);
+      }
+      if (!context.trades_by_id[trade_id]) {
+        context.trades_by_id[trade_id] = trade;
+        context.ee.emit('trade_processed', trade_id);
       }
     });
     positions.forEach((position) => {

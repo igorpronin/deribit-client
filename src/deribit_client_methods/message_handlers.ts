@@ -12,6 +12,7 @@ import {
   TransactionLogItem,
   TransactionLogCurrencies,
   RpcEditOrderMsg,
+  RpcCancelOrderMsg,
 } from '../types/types';
 import { remove_elements_from_existing_array } from '@igorpronin/utils';
 import { DeribitClient } from '../DeribitClient';
@@ -95,7 +96,18 @@ export function handle_open_order_message(context: DeribitClient, msg: RpcOpenOr
 export function handle_edit_order_message(context: DeribitClient, msg: RpcEditOrderMsg) {
   const id = msg.id.split('/')[1];
 
+  const order_data = context.orders.all[id];
+  order_data.accepted_order_price = msg.result.order.price;
+
   to_console(context, `Order ${id} edited successfully`);
+
+  context.ee.emit('order_edited', id);
+}
+
+export function handle_cancel_order_message(context: DeribitClient, msg: RpcCancelOrderMsg) {
+  const id = msg.id.split('/')[1];
+
+  to_console(context, `Order ${id} cancelled successfully`);
 }
 
 export function handle_get_transaction_log_message(

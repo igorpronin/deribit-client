@@ -52,11 +52,11 @@ export function handle_auth_message(context: DeribitClient, msg: RpcAuthMsg, is_
     );
   }
 
+  context.auth_data.state = true;
   if (!is_re_auth) {
     context.authorized_at = new Date();
     context.ee.emit('authorized');
   }
-  context.auth_data.state = true;
   if (is_re_auth && context.silent_reauth) {
     return;
   }

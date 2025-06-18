@@ -70,6 +70,7 @@ export enum PrivateMethods {
   GetPositions = 'private/get_positions',
   GetTransactionLog = 'private/get_transaction_log',
   EditOrder = 'private/edit',
+  CancelOrder = 'private/cancel_by_label',
 }
 
 export type Methods = PublicMethods | PrivateMethods;
@@ -152,6 +153,8 @@ export interface OrderData {
   ref_id?: string;
   is_pending: boolean;
   is_error: boolean;
+  pending_order_price?: number;
+  accepted_order_price?: number;
   created_at?: number;
   updated_at?: number;
   closed_at?: number;
@@ -229,6 +232,10 @@ export interface RpcOpenOrderMsg extends RpcSuccessResponse {
     trades: Trade[];
     order: Order;
   };
+}
+
+export interface RpcCancelOrderMsg extends RpcSuccessResponse {
+  id: `co/${string}`;
 }
 
 export interface RpcEditOrderMsg extends RpcSuccessResponse {

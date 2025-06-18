@@ -3,6 +3,7 @@ import {
   request_get_positions,
   request_get_account_summaries,
   request_open_order,
+  request_cancel_order,
 } from '../rpc_requests';
 import {
   GetInstrumentID,
@@ -195,6 +196,7 @@ export function create_process_open_order(context: DeribitClient) {
       edit_history: [],
       id,
       is_pending: true,
+      pending_order_price: price,
       is_error: false,
       state: null,
       trades: [],
@@ -240,8 +242,28 @@ export function create_process_edit_order_price(context: DeribitClient) {
     }
     const edit_params = { id, ref_id, price, amount };
     order_data.edit_history.push(edit_params);
+    order_data.pending_order_price = price;
     request_edit_order(context.client, edit_params);
     to_console(context, `Order ${id} edit requested. New price: ${price}`);
     return id;
   };
+}
+
+// Public method, calls from DeribitClient class
+export function create_process_cancel_order(context: DeribitClient) {
+  return (id: string) => {
+    validate_auth_and_trade_permit(context);
+    validate_obligatory_subscriptions(context);
+    const order_data = context.orders.all[id];
+    if (!order_data) {
+      throw new Error(`Order ${id} not found`);
+    }
+    if (order_data.closed_at) {
+      to_console(context, `Order ${id} is closed, cancel request skipped`, true);
+      return id;
+    }
+    request_cancel_order(context.client, id);
+    to_console(context, `Order ${id} cancel requested`);
+    return id;
+  }
 }

@@ -71,6 +71,7 @@ console.log('New order ID:', id);
 
 ```typescript
 client.ee.on('authorized', () => console.log('Authorized!'));  
+client.ee.once('authorized', () => console.log('Authorized!'));  
 client.ee.on('subscribed', (msg: any) => console.log('Subscribed!', msg));
 client.ee.on('subscribed_all', () => console.log('Subscribed all!'));
 client.ee.on('portfolio_updated', (ticker: Currencies) => console.log('Portfolio updated!', ticker));
@@ -81,8 +82,10 @@ client.ee.on('ticker_updated', (instrument_name: string) => console.log('Ticker 
 client.ee.once('ticker_updated', (instrument_name: string) => console.log('Ticker updated!', instrument_name));
 client.ee.on('all_obligatory_data_received', () => console.log('All obligatory data received!'));
 client.ee.on('order_updated', (order_id: string) => console.log('Order updated!', order_id));
+client.ee.on('order_edited', (order_id: string) => console.log('Order edited!', order_id));
 client.ee.on('order_filled', (order_id: string) => console.log('Order filled!', order_id));
 client.ee.on('account_summaries_updated', () => console.log('Account summaries updated!'));
+client.ee.on('trade_processed', (trade_id) => console.log(client.get_trade_by_id(trade_id)));
 client.ee.on('disconnected', () => console.log('Disconnected!'));
 client.ee.on('book_updated', (instrument_name: string) => console.log('Book updated!', instrument_name));
 client.ee.on('order_closed', (order_id: string) => console.log('Order closed!', order_id)); // Closing states: filled, cancelled, rejected

@@ -98,6 +98,16 @@ export const request_edit_order = (
   return { id, msg };
 };
 
+export const request_cancel_order = (
+  client: WebSocket,
+  id: string,
+): { id: string; msg: any } => {
+  const msg = custom_request(client, PrivateMethods.CancelOrder, `co/${id}`, {
+    label: id,
+  });
+  return { id, msg };
+};
+
 // https://docs.deribit.com/#private-get_transaction_log
 export const request_get_transaction_log = (
   client: WebSocket,

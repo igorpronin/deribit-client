@@ -36,6 +36,7 @@ import {
 import {
   create_process_edit_order_price,
   create_process_open_order,
+  create_process_cancel_order,
 } from './deribit_client_methods/actions';
 import { auth } from './deribit_client_methods/auth_requests_and_handlers';
 import { validate_user_requests, to_console } from './deribit_client_methods/utils';
@@ -176,6 +177,7 @@ export class DeribitClient {
   // Actions
   public process_open_order: (params: OrderParams) => string;
   public process_edit_order_price: (params: EditOrderPriceParams) => string;
+  public process_cancel_order: (id: string) => string;
   // End of Actions
 
   // Subscriptions and obligatory data
@@ -197,6 +199,7 @@ export class DeribitClient {
   public currencies_in_work: Currencies[] = [];
 
   public trades: Trade[] = [];
+  public trades_by_id: Record<string, Trade> = {};
 
   public transactions_log: Partial<
     Record<
@@ -266,6 +269,7 @@ export class DeribitClient {
     // Applying public actions
     this.process_open_order = create_process_open_order(this);
     this.process_edit_order_price = create_process_edit_order_price(this);
+    this.process_cancel_order = create_process_cancel_order(this);
     // End of Applying public actions
 
     if (params.instance_id) {
@@ -420,6 +424,8 @@ export class DeribitClient {
   public get_order_by_label = (label: string) => this.orders.all[label];
 
   public get_trades = () => this.trades;
+
+  public get_trade_by_id = (trade_id: string): Trade | null => this.trades_by_id[trade_id] || null;
 
   public has_pending_orders = (): boolean => this.orders.pending_orders_amount > 0;
 
